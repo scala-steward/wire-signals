@@ -159,7 +159,7 @@ object CancellableFuture {
       f.onComplete {
         case Success(t) =>
           synchronized {
-            results.addOne((i, t))
+            results.append((i, t))
             if (results.size == futures.size) promise.trySuccess(results.sortBy(_._1).map(_._2).toVector)
           }
         case Failure(ex) => promise.tryFailure(ex)
