@@ -59,6 +59,8 @@ package object testutils {
   def result[A](future: Future[A])(implicit duration: FiniteDuration = DefaultTimeout): A =
     Await.result(future, duration)
 
+  @inline def await[A](future: Future[A])(implicit duration: FiniteDuration = DefaultTimeout): Unit = tryResult(future)
+
   def tryResult[A](future: Future[A])(implicit duration: FiniteDuration = DefaultTimeout): Try[A] =
     try {
       Try(Await.result(future, duration))
