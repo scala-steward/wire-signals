@@ -155,8 +155,14 @@ object CancellableFuture {
   def cancelled[T](): CancellableFuture[T] = failed(CancelException)
 
   /** Creates a new `CancellableFuture[Iterable[T]]` from a Iterable of `Iterable[T]`.
-    * The original futures are executed asynchronously. If any of the original cancellable futures fails or is cancelled,
-    * the resulting one will fail immediately, but the original ones will not.
+    * The original futures are executed asynchronously, but there are some rules that control them:
+    * 1. All original futures need to succeed for the resulting one to succeed.
+    * 2. Cancelling the resulting future will cancel all the original ones except those that are uncancellable.
+    * 3a. If one of the original futures is cancelled (if it's cancellable) the resulting future will be cancelled
+    *     and all other original futures (those that are not uncancellable) will be cancelled as well.
+    * 3b. If one of the original futures fails for any other reason than cancellation, the resulting future will fail
+    *     with the same reason as the original one and all other original futures will be cancelled (if they are not
+    *     uncancellable) - i.e. they will not fail with the original reason but with `CancelException`
     */
   def sequence[T](futures: Iterable[CancellableFuture[T]])
                  (implicit executor: ExecutionContext): CancellableFuture[Iterable[T]] = {
@@ -177,6 +183,11 @@ object CancellableFuture {
       }
     }
 
+    promise.future.onComplete {
+      case Failure(_) => futures.foreach(_.cancel())
+      case _ =>
+    }
+
     new CancellableFuture(promise)
   }
 
@@ -185,7 +196,7 @@ object CancellableFuture {
     * asynchronously. If any of the original cancellable futures fails or is cancelled, the resulting
     * one will will fail immediately, but the other original ones will not.
     *
-    * @todo Cancelling the resulting future will NOT cancel the original ones. (FIX IT)
+    * @see `sequence` for cancellation rules
     */
   def traverse[T, U](in: Iterable[T])(f: T => CancellableFuture[U])
                     (implicit executor: ExecutionContext): CancellableFuture[Iterable[U]] =
@@ -197,7 +208,7 @@ object CancellableFuture {
     * also fails and no consecutive original futures will be executed.
     *
     * @todo Cancelling the resulting future prevents all the consecutive original futures from being executed
-    *       but the ongoing one is not cancelled. (FIX IT)
+    *       but is the ongoing one cancelled as well? (TEST IT)
     */
   def traverseSequential[T, U](in: Iterable[T])(f: T => CancellableFuture[U])
                               (implicit executor: ExecutionContext): CancellableFuture[Iterable[U]] = {
@@ -229,6 +240,8 @@ object CancellableFuture {
         } else false
     }
   }
+
+  @inline def toUncancellable[T](futures: CancellableFuture[T]*): Iterable[CancellableFuture[T]] = futures.map(_.toUncancellable)
 
   private lazy val timer: Timer = new Timer()
 
@@ -462,9 +475,11 @@ class CancellableFuture[+T](promise: Promise[T]) extends Awaitable[T] { self =>
 
       override def onSubscribe(): Unit = {}
     })(eventContext.register)
+
+  def toUncancellable: CancellableFuture[T] = new UncancellableFuture[T](promise)
 }
 
-class UncancellableFuture[+T](promise: Promise[T]) extends CancellableFuture[T](promise) {
+private class UncancellableFuture[+T](promise: Promise[T]) extends CancellableFuture[T](promise) {
   @inline override def future: Future[T] = promise.future
 
   override def cancel(): Boolean = false
@@ -480,4 +495,6 @@ class UncancellableFuture[+T](promise: Promise[T]) extends CancellableFuture[T](
       override def onUnsubscribe(): Unit = eventContext.unregister(this)
       override def onSubscribe(): Unit = {}
     }
+
+  override def toUncancellable: CancellableFuture[T] = this
 }
