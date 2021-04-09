@@ -56,14 +56,13 @@ package object testutils {
 
   val DefaultTimeout: FiniteDuration = 5.seconds
 
-  def result[A](future: Future[A])(implicit duration: FiniteDuration = DefaultTimeout): A =
-    Await.result(future, duration)
+  def result[A](future: Future[A])(implicit duration: FiniteDuration = DefaultTimeout): A = Await.result(future, duration)
 
   @inline def await[A](future: Future[A])(implicit duration: FiniteDuration = DefaultTimeout): Unit = tryResult(future)
 
   def tryResult[A](future: Future[A])(implicit duration: FiniteDuration = DefaultTimeout): Try[A] =
     try {
-      Try(Await.result(future, duration))
+      Try(result(future))
     } catch {
       case t: Throwable => Failure(t)
     }

@@ -54,32 +54,32 @@ object CancellableFuture {
   /** Creates `CancellableFuture[T]` from the given function with the result type of `T`.
     *
     * @param body The function to be executed asynchronously
+    * @param onCancel An optional function to be called if the new cancellable future is cancelled
     * @param executor The execution context
     * @tparam T The result type of the given function
     * @return A cancellable future executing the function
     */
-  def apply[T](body: => T)(implicit executor: ExecutionContext): CancellableFuture[T] =
+  def apply[T](body: => T, onCancel: => Unit = ())(implicit executor: ExecutionContext): CancellableFuture[T] =
     new CancellableFuture(
       returning(new PromiseCompletingRunnable(body))(executor.execute).promise
-    )
-
-  /** Turns a regular `Future[T]` into `CancellableFuture[T]`.
-    *
-    * @param future The future to be lifted
-    * @param onCancel An optional function to be called if the new cancellable future is cancelled
-    * @tparam T The future's result type
-    * @return A new cancellable future wrapped over the original future
-    */
-  def lift[T](future: Future[T], onCancel: => Unit = ()): CancellableFuture[T] = {
-    val p = Promise[T]()
-    p.completeWith(future)
-    new CancellableFuture(p) {
+    ) {
       override def cancel(): Boolean =
         if (super.cancel()) {
           onCancel
           true
         } else false
     }
+
+  /** Turns a regular `Future[T]` into `CancellableFuture[T]`.
+    *
+    * @param future The future to be lifted
+    * @tparam T The future's result type
+    * @return A new cancellable future wrapped over the original future
+    */
+  def lift[T](future: Future[T]): CancellableFuture[T] = {
+    val p = Promise[T]()
+    p.completeWith(future)
+    new UncancellableFuture(p)
   }
 
   /** Creates an empty cancellable future that will start its execution after the given time.
@@ -102,11 +102,12 @@ object CancellableFuture {
     * until cancelled. The first computation is executed with `duration` delay. If the operation takes
     * longer than `duration` it will not be cancelled after the given time, but also the ability to cancel
     * it will be lost.
-    * Typically used together with `map` or a similar method.
     *
-    * @todo Test if it works as designed.
+    * @param duration The initial delay and the consecutive time interval between repeats.
+    * @param body A task repeated every `duration`.
+    * @return A cancellable future representing the whole repeating process.
     */
-  def repeat(duration: Duration)(implicit ec: ExecutionContext): CancellableFuture[Unit] = {
+  def repeat(duration: Duration)(body: => Unit)(implicit ec: ExecutionContext): CancellableFuture[Unit] = {
     if (duration <= Duration.Zero) successful(())
     else {
       val promise = Promise[Unit]()
@@ -117,13 +118,12 @@ object CancellableFuture {
 
         private def startNewTimeoutLoop(): Unit = {
           currentTask = Some(schedule(
-            () => startNewTimeoutLoop(),
+            () => { body; startNewTimeoutLoop() },
             duration.toMillis
           ))
         }
 
         override def cancel(): Boolean = {
-          // TODO: possible race condition
           currentTask.foreach(_.cancel())
           currentTask = None
           super.cancel()
@@ -140,13 +140,13 @@ object CancellableFuture {
 
   /** Creates an already completed `CancellableFuture[T]` with the specified result.
     */
-  def successful[T](res: T): CancellableFuture[T] = new CancellableFuture[T](Promise.successful(res)) {
+  def successful[T](res: T): CancellableFuture[T] = new UncancellableFuture[T](Promise.successful(res)) {
     override def toString: String = s"CancellableFuture.successful($res)"
   }
 
   /** Creates an already failed `CancellableFuture[T] `with the given throwable as the failure reason.
     */
-  def failed[T](ex: Throwable): CancellableFuture[T] = new CancellableFuture[T](Promise.failed(ex)) {
+  def failed[T](ex: Throwable): CancellableFuture[T] = new UncancellableFuture[T](Promise.failed(ex)) {
     override def toString: String = s"CancellableFuture.failed($ex)"
   }
 
@@ -462,4 +462,22 @@ class CancellableFuture[+T](promise: Promise[T]) extends Awaitable[T] { self =>
 
       override def onSubscribe(): Unit = {}
     })(eventContext.register)
+}
+
+class UncancellableFuture[+T](promise: Promise[T]) extends CancellableFuture[T](promise) {
+  @inline override def future: Future[T] = promise.future
+
+  override def cancel(): Boolean = false
+
+  override def fail(ex: Exception): Boolean = false
+
+  override def onCancelled(body: => Unit)(implicit executor: ExecutionContext): Unit = Future { body }
+
+  override def withTimeout(timeout: FiniteDuration)(implicit ec: ExecutionContext): CancellableFuture[T] = this
+
+  override def withAutoCanceling(implicit eventContext: EventContext = EventContext.Global): Subscription =
+    new BaseSubscription(WeakReference(eventContext)) {
+      override def onUnsubscribe(): Unit = eventContext.unregister(this)
+      override def onSubscribe(): Unit = {}
+    }
 }
