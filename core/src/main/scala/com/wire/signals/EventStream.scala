@@ -272,15 +272,16 @@ class EventStream[E] protected () extends EventRelay[E, EventSubscriber[E]] {
     *                future is finished or cancelled.
     * @return A cancellable future which will finish with the next event emitted by the event stream.
     */
-  final def next(implicit context: EventContext = EventContext.Global): CancellableFuture[E] = {
+  final def next(implicit context: EventContext = EventContext.Global, executionContext: ExecutionContext = Threading.defaultContext): CancellableFuture[E] = {
     val p = Promise[E]()
     val o = onCurrent { p.trySuccess }
-    p.future.onComplete(_ => o.destroy())(Threading.defaultContext)
+    p.future.onComplete(_ => o.destroy())
     new CancellableFuture(p)
   }
 
   /** A shorthand for `next` which additionally unwraps the cancellable future */
-  @inline final def future(implicit context: EventContext = EventContext.Global): Future[E] = next.future
+  @inline final def future(implicit context: EventContext = EventContext.Global, executionContext: ExecutionContext = Threading.defaultContext): Future[E] =
+    next.future
 
   /** An alias to the `future` method. */
   @inline final def head: Future[E] = future
