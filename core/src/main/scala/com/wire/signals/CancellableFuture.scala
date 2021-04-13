@@ -58,7 +58,7 @@ object CancellableFuture {
 
     override def fail(ex: Exception): Boolean = false
 
-    override def withTimeout(timeout: FiniteDuration): CancellableFuture[T] = this
+    override def withTimeout(timeout: FiniteDuration, onCancel: => Unit = ()): CancellableFuture[T] = this
 
     override def withAutoCanceling(implicit eventContext: EventContext = EventContext.Global): Subscription =
       new BaseSubscription(WeakReference(eventContext)) {
@@ -100,12 +100,12 @@ object CancellableFuture {
   /** Creates an empty cancellable future that will start its execution after the given time.
     * Typically used together with `map` or a similar method to execute computation with a delay.
     */
-  def delay(duration: FiniteDuration)(implicit executionContext: ExecutionContext = Threading.defaultContext): CancellableFuture[Unit] =
+  def delay(duration: FiniteDuration, onCancel: => Unit = ())(implicit executionContext: ExecutionContext = Threading.defaultContext): CancellableFuture[Unit] =
     if (duration <= Duration.Zero) successful(())
     else {
       val p = Promise[Unit]()
       val task = schedule(() => p.trySuccess(()), duration.toMillis)
-      new CancellableFuture(p, Some(() => task.cancel()))
+      new CancellableFuture(p, Some(() => { task.cancel(); onCancel }))
     }
 
   /** Creates an empty cancellable future which will repeat the mapped computation every given `duration`
@@ -117,36 +117,40 @@ object CancellableFuture {
     * @param body A task repeated every `duration`.
     * @return A cancellable future representing the whole repeating process.
     */
-  def repeat(duration: Duration)(body: => Unit)(implicit ec: ExecutionContext): CancellableFuture[Unit] = {
-    if (duration <= Duration.Zero) successful(())
-    else {
-      val promise = Promise[Unit]()
-      new CancellableFuture(promise) {
-        @volatile
-        private var currentTask: Option[TimerTask] = None
-        startNewTimeoutLoop()
+  def repeat(duration: Duration)(body: => Unit, onCancel: => Unit = ())(implicit ec: ExecutionContext = Threading.defaultContext): CancellableFuture[Unit] = {
+    if (duration <= Duration.Zero)
+      successful(())
+    else
+      newRepeatFuture(duration.toMillis, body, onCancel)
+  }
 
-        private def startNewTimeoutLoop(): Unit = {
-          currentTask = Some(schedule(
-            () => { body; startNewTimeoutLoop() },
-            duration.toMillis
-          ))
-        }
+  private def newRepeatFuture(duration: Long, body: => Unit, onCancel: => Unit)(implicit ec: ExecutionContext) = {
+    val promise = Promise[Unit]()
+    new CancellableFuture(promise, Some(() => onCancel)) {
+      @volatile
+      private var currentTask: Option[TimerTask] = None
+      startNewTimeoutLoop()
 
-        override def cancel(): Boolean = {
-          currentTask.foreach(_.cancel())
-          currentTask = None
-          super.cancel()
-        }
+      private def startNewTimeoutLoop(): Unit = {
+        currentTask = Some(schedule(
+          () => { body; startNewTimeoutLoop() },
+          duration
+        ))
+      }
+
+      override def cancel(): Boolean = {
+        currentTask.foreach(_.cancel())
+        currentTask = None
+        super.cancel()
       }
     }
   }
 
   /** A utility method that combines `delay` with `map`.
     */
-  def delayed[T](duration: FiniteDuration)(body: => T)(implicit executor: ExecutionContext): CancellableFuture[T] =
-    if (duration <= Duration.Zero) CancellableFuture(body)
-    else delay(duration).map { _ => body }
+  def delayed[T](duration: FiniteDuration)(body: => T, onCancel: => Unit = ())(implicit ec: ExecutionContext = Threading.defaultContext): CancellableFuture[T] =
+    if (duration <= Duration.Zero) CancellableFuture(body, onCancel)
+    else delay(duration, onCancel).map { _ => body }
 
   /** Creates an already completed `CancellableFuture[T]` with the specified result.
     */
@@ -460,8 +464,8 @@ class CancellableFuture[+T](promise: Promise[T], onCancel: Option[CancelTask] = 
     * @param timeout A time interval after which the future is cancelled
     * @return The current cancellable future
     */
-  def withTimeout(timeout: FiniteDuration): CancellableFuture[T] = {
-    val f = CancellableFuture.delayed(timeout)(this.cancel())
+  def withTimeout(timeout: FiniteDuration, onCancel: => Unit = ()): CancellableFuture[T] = {
+    val f = CancellableFuture.delayed(timeout)(this.cancel(), onCancel)
     onComplete(_ => f.cancel())
     this
   }

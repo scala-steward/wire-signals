@@ -307,4 +307,97 @@ class CancellableFutureSpec extends munit.FunSuite {
 
     assertEquals(timestamps.size, 1)
   }
+
+  test("Cancel a sequential traverse after the first task finishes with success") {
+    import Threading.defaultContext
+
+    val onCancel = EventStream[Unit]()
+    var timestamps = Seq.empty[Long]
+    val offset = System.currentTimeMillis
+    val cancelOthers = () => {
+      timestamps :+= (System.currentTimeMillis - offset)
+      onCancel ! ()
+    }
+
+    val millis = Seq(50, 500, 250, 300)
+    val cf = CancellableFuture.traverseSequential(millis) { t =>
+      CancellableFuture.delayed(t.millis) { cancelOthers() }
+    }
+    onCancel.foreach(_ => cf.cancel())
+
+    waitForResult(onCancel, ())
+    await(cf)
+
+    assertEquals(timestamps.size, 1)
+  }
+
+  test("Zip two cancellable futures") {
+    import Threading.defaultContext
+
+    val cf1: CancellableFuture[String] = CancellableFuture.delayed(100.millis) { "foo" }
+    val cf2: CancellableFuture[Int] = CancellableFuture.delayed(150.millis) { 666 }
+    val cf: CancellableFuture[(String, Int)] = CancellableFuture.zip(cf1, cf2)
+    assertEquals(result(cf), ("foo", 666))
+  }
+
+  test("Cancel zipped futures") {
+    import Threading.defaultContext
+
+    val s = Signal(0)
+
+    val cf1 = CancellableFuture.delayed(200.millis) { s ! 1; "foo" }
+    val cf2 = CancellableFuture.delayed(250.millis) { s ! 2; 666 }
+    val cf = CancellableFuture.zip(cf1, cf2)
+
+    CancellableFuture.delayed(50.millis) { s ! 3; assert(cf.cancel()) }
+
+    await(cf)
+
+    assertEquals(result(s.head), 3)
+  }
+
+  test("You can't cancel an uncancellable future") {
+    import Threading.defaultContext
+
+    val s = Signal(0)
+
+    val cf = CancellableFuture.delayed(200.millis) { s ! 1 }.toUncancellable
+    assert(!cf.isCancellable)
+
+    CancellableFuture.delayed(50.millis) { s ! 3; assert(!cf.cancel()) }
+
+    await(cf)
+
+    assertEquals(result(s.head), 1)
+  }
+
+  test("Cancelling a future triggers its onCancel task") {
+    import Threading.defaultContext
+
+    val s = Signal(0)
+
+    val cf = CancellableFuture(body = { Thread.sleep(200); s ! 1 }, onCancel = { s ! 2 })
+    assert(cf.isCancellable)
+
+    CancellableFuture.delayed(50.millis) { assert(cf.cancel()) }
+
+    await(cf)
+
+    assert(waitForResult(s, 2))
+  }
+
+  test("Cancelling a delayed future triggers its onCancel task") {
+    import Threading.defaultContext
+
+    val s = Signal(0)
+
+    val cf = CancellableFuture.delayed(200.millis)(body = { s ! 1 }, onCancel = { s ! 2 })
+    assert(cf.isCancellable)
+
+    CancellableFuture.delayed(50.millis) { assert(cf.cancel()) }
+
+    await(cf)
+
+    assert(waitForResult(s, 2))
+  }
 }
