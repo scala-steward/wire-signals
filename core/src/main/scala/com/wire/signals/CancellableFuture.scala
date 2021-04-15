@@ -56,9 +56,9 @@ object CancellableFuture {
   private final class Uncancellable[+T](promise: Promise[T]) extends CancellableFuture[T](promise)(Threading.defaultContext) {
     override def cancel(): Boolean = false
 
-    override def fail(ex: Exception): Boolean = false
+    override def fail(ex: Throwable): Boolean = false
 
-    override def withTimeout(timeout: FiniteDuration, onCancel: => Unit = ()): CancellableFuture[T] = this
+    override def addTimeout(timeout: FiniteDuration): Unit = {}
 
     override def withAutoCanceling(implicit eventContext: EventContext = EventContext.Global): Subscription =
       new BaseSubscription(WeakReference(eventContext)) {
@@ -295,7 +295,7 @@ class CancellableFuture[+T](promise: Promise[T], onCancel: Option[CancelTask] = 
     *
     * @return `true` if the future was cancelled, `false` if it was completed beforehand (with success or failure).
     */
-  def fail(ex: Exception): Boolean = promise.tryFailure(ex)
+  def fail(ex: Throwable): Boolean = promise.tryFailure(ex)
 
   /** Same as `Future.onComplete`. */
   @inline def onComplete[U](f: Try[T] => U)(implicit executor: ExecutionContext = ec): Unit = future.onComplete(f)(executor)
@@ -310,7 +310,7 @@ class CancellableFuture[+T](promise: Promise[T], onCancel: Option[CancelTask] = 
     */
   def map[U](f: T => U)(implicit executor: ExecutionContext = ec): CancellableFuture[U] = {
     val p = Promise[U]()
-    @volatile var onCancel: Option[CancelTask] = Some(() => self.cancel())
+    @volatile var onCancel: Option[() => Unit] = Some(() => Future(self.cancel())(executor))
 
     future.onComplete { v =>
       onCancel = None
@@ -320,7 +320,7 @@ class CancellableFuture[+T](promise: Promise[T], onCancel: Option[CancelTask] = 
     new CancellableFuture(p)(executor) {
       override def cancel(): Boolean =
         if (super.cancel()) {
-          Future(onCancel.foreach(_ ()))(executor)
+          onCancel.foreach(_())
           true
         } else false
     }
@@ -456,15 +456,13 @@ class CancellableFuture[+T](promise: Promise[T], onCancel: Option[CancelTask] = 
   @throws[Exception](classOf[Exception])
   override def result(atMost: Duration)(implicit permit: CanAwait): T = future.result(atMost)
 
-  /** Cancels the future after the given timeout.
+  /** Cancels this future after the given timeout.
     *
-    * @param timeout A time interval after which the future is cancelled
-    * @return The current cancellable future
+    * @param timeout A time interval after which this future is cancelled
     */
-  def withTimeout(timeout: FiniteDuration, onCancel: => Unit = ()): CancellableFuture[T] = {
-    val f = CancellableFuture.delayed(timeout)(this.cancel(), onCancel)
+  def addTimeout(timeout: FiniteDuration): Unit = {
+    val f = CancellableFuture.delayed(timeout)(this.cancel())
     onComplete(_ => f.cancel())
-    this
   }
 
   /** Registers the cancellable future in the given event context.

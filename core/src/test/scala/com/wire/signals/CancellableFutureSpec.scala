@@ -56,7 +56,6 @@ class CancellableFutureSpec extends munit.FunSuite {
     assert(cf.isCompleted)
   }
 
-
   test(" A cancellable future succeeds just like a standard one") {
     implicit val ec: DispatchQueue = SerialDispatchQueue()
     var res = 0
@@ -330,6 +329,19 @@ class CancellableFutureSpec extends munit.FunSuite {
     assertEquals(timestamps.size, 1)
   }
 
+  test("Sequence two cancellable futures and get the result") {
+    import Threading.defaultContext
+
+    val cf1: CancellableFuture[String] = CancellableFuture.delayed(100.millis) { "foo" }
+    val cf2: CancellableFuture[String] = CancellableFuture.delayed(150.millis) { "bar" }
+    val cf: CancellableFuture[Iterable[String]] = CancellableFuture.sequence(Vector(cf1, cf2))
+
+    val res = result(cf).toVector
+    assertEquals(res.size, 2)
+    assertEquals(res(0), "foo")
+    assertEquals(res(1), "bar")
+  }
+
   test("Zip two cancellable futures") {
     import Threading.defaultContext
 
@@ -398,5 +410,48 @@ class CancellableFutureSpec extends munit.FunSuite {
     await(cf)
 
     assert(waitForResult(s, 2))
+  }
+
+  test("A failed but not cancelled future does not trigger onCancel") {
+    import Threading.defaultContext
+    var res = 0
+
+    val cf: CancellableFuture[Unit] = CancellableFuture(
+      body = { Thread.sleep(500); res = 1 },
+      onCancel = { res = 2 }
+    )
+
+    assertEquals(res, 0)
+    case object FailureException extends Throwable
+    assert(cf.fail(FailureException))
+
+    await(cf)
+
+    assertEquals(res, 0)
+  }
+
+  test("Map a cancellable future") {
+    import Threading.defaultContext
+
+    val cf1 = CancellableFuture { Thread.sleep(50); "foo" }
+    val cf2 = cf1.map(_.toUpperCase)
+
+    assertEquals(result(cf2), "FOO")
+  }
+
+  test("Cancelling a mapped future also cancels the original one") {
+    import Threading.defaultContext
+
+    val s = Signal("")
+
+    val cf1 = CancellableFuture(
+      body = { Thread.sleep(50); s ! "foo"; "foo" },
+      onCancel = { s ! "bar" }
+    )
+    val cf2 = cf1.map(_.toUpperCase)
+
+    assert(cf2.cancel())
+
+    assert(waitForResult(s, "bar"))
   }
 }
