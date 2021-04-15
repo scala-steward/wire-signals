@@ -242,7 +242,7 @@ class CancellableFutureSpec extends munit.FunSuite {
   test("Cancel a sequence of cancellable futures") {
     import Threading.defaultContext
 
-    val onCancel = EventStream[Unit]()
+    val onCancel = Signal(false)
 
     var timestamps = Seq.empty[Long]
     val offset = System.currentTimeMillis
@@ -251,11 +251,10 @@ class CancellableFutureSpec extends munit.FunSuite {
     val cf3 = CancellableFuture.delayed(500.millis) { timestamps :+= (System.currentTimeMillis - offset) }
     val cf4 = CancellableFuture.delayed(600.millis) { timestamps :+= (System.currentTimeMillis - offset) }
 
-    val cfSeq = CancellableFuture.sequence(Seq(cf1, cf2, cf3, cf4), Some(() => onCancel ! ()))
+    val cfSeq = CancellableFuture.sequence(Seq(cf1, cf2, cf3, cf4), Some(() => onCancel ! true))
     Thread.sleep(50)
     cfSeq.cancel()
-
-    waitForResult(onCancel, ())
+    waitForResult(onCancel, true)
 
     assert(timestamps.isEmpty)
   }

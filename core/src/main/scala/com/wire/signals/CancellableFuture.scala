@@ -176,20 +176,17 @@ object CancellableFuture {
     */
   def sequence[T](futures: Iterable[CancellableFuture[T]], onCancel: Option[CancelTask] = None)
                  (implicit executor: ExecutionContext): CancellableFuture[Iterable[T]] = {
-    val results = ArrayBuffer[T]()
-    results.sizeHint(futures.size)
-    var resultsReady = 0
+    val results = new ArrayBuffer[(Int, T)](futures.size)
     val promise = Promise[Iterable[T]]()
 
     futures.zipWithIndex.foreach { case (f, i) =>
       f.onComplete {
-        case Success(t) => synchronized {
-          results.update(i, t)
-          resultsReady += 1
-          if (resultsReady == futures.size) promise.trySuccess(results.toVector)
-        }
-        case Failure(ex) =>
-          promise.tryFailure(ex)
+        case Success(t) =>
+          synchronized {
+            results.addOne((i, t))
+            if (results.size == futures.size) promise.trySuccess(results.sortBy(_._1).map(_._2).toVector)
+          }
+        case Failure(ex) => promise.tryFailure(ex)
       }
     }
 
