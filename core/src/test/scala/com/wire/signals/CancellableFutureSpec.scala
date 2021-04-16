@@ -1,5 +1,7 @@
 package com.wire.signals
 
+import com.wire.signals.CancellableFuture.CancelException
+
 import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration._
 import testutils._
@@ -64,7 +66,7 @@ class CancellableFutureSpec extends munit.FunSuite {
     val f = p.future
     f.foreach { res = _ }
 
-    val cf = new CancellableFuture(p, Some { () => res = -1 })
+    val cf = new Cancellable(p, Some { () => res = -1 })
 
     p.success(1)
     assertEquals(result(f), 1)
@@ -82,7 +84,7 @@ class CancellableFutureSpec extends munit.FunSuite {
     val f = p.future
     f.foreach { res ! _ }
 
-    val cf = new CancellableFuture(p, Some { () => res ! -1 })
+    val cf = new Cancellable(p, Some { () => res ! -1 })
 
     assert(cf.cancel())
     await(cf)
@@ -98,7 +100,7 @@ class CancellableFutureSpec extends munit.FunSuite {
     val f = p.future
     f.foreach { res ! _ }
 
-    val cf = new CancellableFuture(p, Some { () => res ! -1 })
+    val cf = new Cancellable(p, Some { () => res ! -1 })
 
     assert(cf.cancel())
     await(cf)
@@ -439,13 +441,21 @@ class CancellableFutureSpec extends munit.FunSuite {
     assertEquals(result(cf2), "FOO")
   }
 
+  /**
+    * This is an important feature. It means that we can treat a chain of mappings as if we were using a builder
+    * of a future, and then we can use the future produced by the whole chain exactly the same way as if it was
+    * created in one step. One of the requirements for that is that cancelling that future should work up the chain
+    * and cancel all intermediate futures and the original one too.
+    * Also, this behaviour is in agreement with how cancelling a future produced by `.sequence` cancels original
+    * futures as well (and `.traverse`, and `.zip`, etc.)
+    */
   test("Cancelling a mapped future also cancels the original one") {
     import Threading.defaultContext
 
     val s = Signal("")
 
     val cf1 = CancellableFuture(
-      body = { Thread.sleep(50); s ! "foo"; "foo" },
+      body = { Thread.sleep(500); s ! "foo"; "foo" },
       onCancel = { s ! "bar" }
     )
     val cf2 = cf1.map(_.toUpperCase)
@@ -453,5 +463,49 @@ class CancellableFutureSpec extends munit.FunSuite {
     assert(cf2.cancel())
 
     assert(waitForResult(s, "bar"))
+  }
+
+  test("Flat-map a cancellable future") {
+    import Threading.defaultContext
+
+    val cf1 = CancellableFuture { Thread.sleep(50); "foo" }
+    val cf2 = cf1.flatMap {
+      case ""    => CancellableFuture.successful("boo")
+      case other => CancellableFuture { Thread.sleep(50); other.toUpperCase }
+    }
+
+    assertEquals(result(cf2), "FOO")
+  }
+
+  test("Cancelling a flat-mapped future also cancels the original one") {
+    import Threading.defaultContext
+
+    val s = Signal("")
+
+    val cf1 = CancellableFuture(
+      body = { Thread.sleep(500); s ! "foo"; "foo" },
+      onCancel = { s ! "bar" }
+    )
+    val cf2 = cf1.flatMap {
+      case ""    => CancellableFuture.successful("boo")
+      case other => CancellableFuture { Thread.sleep(500); other.toUpperCase }
+    }
+
+    assert(cf2.cancel())
+
+    assert(waitForResult(s, "bar"))
+  }
+
+  test("recover from a cancelled future") {
+    import Threading.defaultContext
+
+    val cf1 = CancellableFuture { Thread.sleep(500); "foo" }
+    val cf2 = cf1.recover {
+      case CancelException => "bar"
+    }
+
+    assert(cf1.cancel())
+
+    assertEquals(result(cf2), "bar")
   }
 }

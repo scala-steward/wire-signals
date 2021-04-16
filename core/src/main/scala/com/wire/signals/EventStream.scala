@@ -276,7 +276,7 @@ class EventStream[E] protected () extends EventRelay[E, EventSubscriber[E]] {
     val p = Promise[E]()
     val o = onCurrent { p.trySuccess }
     p.future.onComplete(_ => o.destroy())
-    new CancellableFuture(p)
+    new Cancellable(p)
   }
 
   /** A shorthand for `next` which additionally unwraps the cancellable future */
