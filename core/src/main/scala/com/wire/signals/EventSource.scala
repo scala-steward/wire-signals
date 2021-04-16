@@ -2,7 +2,7 @@ package com.wire.signals
 
 import scala.concurrent.ExecutionContext
 
-trait EventRelay[E, S] {
+trait EventSource[E, S] {
   private object subscribersMonitor
 
   private[this] var autowiring = true
@@ -36,13 +36,12 @@ trait EventRelay[E, S] {
   /** Creates a [[Subscription]] to a function which will consume events in the same `ExecutionContext` as
     * the one in which the events are being emitted.
     *
-    * @see [[EventRelay.on]]
+    * @see [[EventSource.on]]
     *
     * The [[Subscription]] will be automatically enabled ([[Subscription.enable]]).
-    *
     * @param body A function which consumes the event
     * @param eventContext an [[EventContext]] which will register the [[Subscription]] for further management (optional)
-    * @return a [[Subscription]] representing the created connection between the [[EventRelay]] and the body function
+    * @return a [[Subscription]] representing the created connection between the [[EventSource]] and the body function
     */
   def onCurrent(body: E => Unit)(implicit eventContext: EventContext = EventContext.Global): Subscription
 
@@ -114,7 +113,7 @@ trait EventRelay[E, S] {
 }
 
 
-/** [[Subscription]]s created for a [[ForcedEventRelay]] cannot be unsubscribed.
+/** [[Subscription]]s created for a [[ForcedEventSource]] cannot be unsubscribed.
   * They will stay subscribed until destroyed.
   *
   * You can use it as a tag when creating a new event source, e.g.
@@ -136,7 +135,7 @@ trait EventRelay[E, S] {
   * @tparam E The type of events emitted by the event source.
   */
 
-trait ForcedEventRelay[E, S] extends EventRelay[E, S] {
+trait ForcedEventSource[E, S] extends EventSource[E, S] {
   abstract override def on(ec: ExecutionContext)(body: E => Unit)(implicit context: EventContext = EventContext.Global): Subscription =
     returning(super.on(ec)(body))(_.disablePauseWithContext())
 

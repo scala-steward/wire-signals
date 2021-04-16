@@ -294,7 +294,7 @@ object Signal {
   * @param value The option of the last value published in the signal or `None` if the signal was not initialized yet.
   * @tparam V The type of the value held in the signal.
   */
-class Signal[V] protected (@volatile protected[signals] var value: Option[V] = None) extends EventRelay[V, SignalSubscriber] { self =>
+class Signal[V] protected (@volatile protected[signals] var value: Option[V] = None) extends EventSource[V, SignalSubscriber] { self =>
   private object updateMonitor
 
   /** Updates the current value of the signal by applying a given function to it.
@@ -655,8 +655,7 @@ class Signal[V] protected (@volatile protected[signals] var value: Option[V] = N
     * be provided by the user for managing the subscription instead of doing it manually. When the value of the signal changes,
     * the subscriber function will be called in the given execution context instead of the one of the publisher.
     *
-    * @see [[EventRelay]]
-    *
+    * @see [[EventSource]]
     * @param ec An `ExecutionContext` in which the body function will be executed.
     * @param body A function which is called initially, when registered in the signal,
     *             and then every time the value of the signal changes.
@@ -669,7 +668,7 @@ class Signal[V] protected (@volatile protected[signals] var value: Option[V] = N
   /** Registers a subscriber which will always be called in the same execution context in which the value of the signal was changed.
     * An optional event context can be provided by the user for managing the subscription instead of doing it manually.
     *
-    * @see [[EventRelay]]
+    * @see [[EventSource]]
     * @param body A function which is called initially, when registered in the signal,
     *             and then every time the value of the signal changes.
     * @param eventContext An [[EventContext]] which will register the [[Subscription]] for further management (optional)
@@ -698,7 +697,7 @@ class Signal[V] protected (@volatile protected[signals] var value: Option[V] = N
 /** By default, a new signal is initialized lazily, i.e. only when the first subscriber function is registered in it.
   * You can decorate it with `NoAutowiring` to enforce initialization.
   *
-  * @see [[EventRelay]]
+  * @see [[EventSource]]
   */
 trait NoAutowiring { self: Signal[_] =>
   disableAutowiring()

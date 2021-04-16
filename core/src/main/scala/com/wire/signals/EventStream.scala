@@ -133,7 +133,7 @@ object EventStream {
   *
   * @see [[scala.concurrent.ExecutionContext]]
   */
-class EventStream[E] protected () extends EventRelay[E, EventSubscriber[E]] {
+class EventStream[E] protected () extends EventSource[E, EventSubscriber[E]] {
 
   /** Dispatches the event to all subscribers.
     *
@@ -156,8 +156,7 @@ class EventStream[E] protected () extends EventRelay[E, EventSubscriber[E]] {
     * be provided by the user for managing the subscription instead of doing it manually. When an event is published in
     * the event stream, the subscriber function will be called in the given execution context instead of the one of the publisher.
     *
-    * @see [[EventRelay]]
-    *
+    * @see [[EventSource]]
     * @param ec An `ExecutionContext` in which the body function will be executed.
     * @param body A function which consumes the event
     * @param eventContext An [[EventContext]] which will register the [[Subscription]] for further management (optional)
@@ -171,8 +170,7 @@ class EventStream[E] protected () extends EventRelay[E, EventSubscriber[E]] {
   /** Registers a subscriber which will always be called in the same execution context in which the event was published.
     * An optional event context can be provided by the user for managing the subscription instead of doing it manually.
     *
-    * @see [[EventRelay]]
-    *
+    * @see [[EventSource]]
     * @param body A function which consumes the event
     * @param eventContext An [[EventContext]] which will register the [[Subscription]] for further management (optional)
     * @return A [[Subscription]] representing the created connection between the event stream and the body function

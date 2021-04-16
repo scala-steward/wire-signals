@@ -104,8 +104,7 @@ object CancellableFuture {
   private def newRepeatFuture(duration: Long, body: => Unit, onCancel: => Unit)(implicit ec: ExecutionContext) = {
     val promise = Promise[Unit]()
     new Cancellable(promise, Some(() => onCancel)) {
-      @volatile
-      private var currentTask: Option[TimerTask] = None
+      @volatile private var currentTask: Option[TimerTask] = None
       startNewTimeoutLoop()
 
       private def startNewTimeoutLoop(): Unit = {
@@ -474,8 +473,8 @@ class Cancellable[+T](promise: Promise[T], onCancel: Option[() => Unit] = None)
   override def isCancellable: Boolean = !future.isCompleted
 }
 
-final class Uncancellable[+T](override val future: Future[T])(implicit ec: ExecutionContext = Threading.defaultContext)
-  extends CancellableFuture[T] {
+final class Uncancellable[+T](override val future: Future[T])
+                             (implicit ec: ExecutionContext = Threading.defaultContext) extends CancellableFuture[T] {
   override def fail(ex: Throwable): Boolean = false
 
   override def toUncancellable: CancellableFuture[T] = this

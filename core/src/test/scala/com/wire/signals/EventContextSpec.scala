@@ -83,7 +83,7 @@ class EventContextSpec extends munit.FunSuite {
 
   test("Pausing, resuming and destroying a normal event context, but with forced event sources") {
     implicit val ec: EventContext = EventContext()
-    val s = new SourceSignal[Int](Some(0)) with ForcedEventRelay[Int, SignalSubscriber]
+    val s = new SourceSignal[Int](Some(0)) with ForcedEventSource[Int, SignalSubscriber]
     s.onCurrent(capture)
 
     assertEquals(s.hasSubscribers, true)

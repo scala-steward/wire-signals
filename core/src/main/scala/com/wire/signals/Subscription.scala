@@ -80,7 +80,7 @@ trait Subscription {
 
 /** Provides the default implementation of the [[Subscription]] trait.
   * Exposes two new abstract methods: `onSubscribe` and `onUnsubscribe`. A typical way to implement them is
-  * to have a reference to the source of events which implements the [[EventRelay]] trait and call `subscribe(this)`
+  * to have a reference to the source of events which implements the [[EventSource]] trait and call `subscribe(this)`
   * on that source (where `this` is the subscription).
   *
   * For examples:
