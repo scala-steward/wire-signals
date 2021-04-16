@@ -1,12 +1,13 @@
 // based on http://caryrobbins.com/dev/sbt-publishing/
 
-lazy val scala213 = "2.13.4"
+lazy val scala213 = "2.13.5"
 lazy val scala212 = "2.12.12"
 lazy val scala211 = "2.11.12"
 lazy val supportedScalaVersions = List(scala213, scala212, scala211)
 
 ThisBuild / organization := "com.wire"
 ThisBuild / scalaVersion := scala213
+Test / scalaVersion := scala213
 
 val standardOptions = Seq(
   "-deprecation",
@@ -48,7 +49,7 @@ val scala213Options = Seq(
 homepage := Some(url("https://github.com/wireapp/wire-signals"))
 licenses := Seq("GPL 3.0" -> url("https://www.gnu.org/licenses/gpl-3.0.en.html"))
 publishMavenStyle := true
-publishArtifact in Test := false
+Test / publishArtifact := false
 pomIncludeRepository := { _ => false }
 ThisBuild / publishTo := {
   val nexus = "https://oss.sonatype.org/"
@@ -80,8 +81,6 @@ publishMavenStyle := true
 publishConfiguration      := publishConfiguration.value.withOverwrite(true)
 publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true)
 publishM2Configuration    := publishM2Configuration.value.withOverwrite(true)
-
-Test / scalaVersion := scala213
 
 lazy val root = (project in file("."))
   .settings(

@@ -56,16 +56,16 @@ package object testutils {
 
   val DefaultTimeout: FiniteDuration = 5.seconds
 
-  def result[A](future: Future[A])(implicit duration: FiniteDuration = DefaultTimeout): A =
-    Await.result(future, duration)
+  def result[A](future: Future[A])(implicit duration: FiniteDuration = DefaultTimeout): A = Await.result(future, duration)
+
+  @inline def await[A](future: Future[A])(implicit duration: FiniteDuration = DefaultTimeout): Unit = tryResult(future)
 
   def tryResult[A](future: Future[A])(implicit duration: FiniteDuration = DefaultTimeout): Try[A] =
     try {
-      Try(Await.result(future, duration))
+      Try(result(future))
     } catch {
       case t: Throwable => Failure(t)
     }
-
 
   def waitForResult[V](signal: Signal[V], expected: V, timeout: FiniteDuration): Boolean = {
     val offset = System.currentTimeMillis()
@@ -82,9 +82,7 @@ package object testutils {
     false
   }
 
-  def waitForResult[V](signal: Signal[V], expected: V): Boolean = {
-    waitForResult(signal, expected, DefaultTimeout)
-  }
+  def waitForResult[V](signal: Signal[V], expected: V): Boolean = waitForResult(signal, expected, DefaultTimeout)
 
   def waitForResult[E](stream: EventStream[E], expected: E, timeout: FiniteDuration): Boolean = {
     val offset = System.currentTimeMillis()
@@ -101,9 +99,7 @@ package object testutils {
     false
   }
 
-  def waitForResult[E](stream: EventStream[E], expected: E): Boolean = {
-    waitForResult(stream, expected, DefaultTimeout)
-  }
+  def waitForResult[E](stream: EventStream[E], expected: E): Boolean = waitForResult(stream, expected, DefaultTimeout)
 
   /**
     * Very useful for checking that something DOESN'T happen (e.g., ensure that a signal doesn't get updated after
