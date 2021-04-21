@@ -106,3 +106,7 @@ lazy val root = (project in file("."))
 testFrameworks += new TestFramework("munit.Framework")
 
 mimaPreviousArtifacts := Set("com.wire" %% "wire-signals-extensions" % "0.4.0")
+
+exportJars := true
+Compile / packageBin / packageOptions +=
+  Package.ManifestAttributes("Automatic-Module-Name" -> "wire-signals-extensions")
