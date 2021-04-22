@@ -207,7 +207,7 @@ class EventStream[E] protected () extends EventSource[E, EventSubscriber[E]] {
     * @tparam V The type of the resulting event.
     * @return A new event stream of type `V`.
     */
-  final def mapAsync[V](f: E => Future[V]): EventStream[V] = new FutureEventStream[E, V](this, f)
+  final def mapSync[V](f: E => Future[V]): EventStream[V] = new FutureEventStream[E, V](this, f)
 
   /** Creates a new `EventStream[E]` by filtering events emitted by the original one.
     *

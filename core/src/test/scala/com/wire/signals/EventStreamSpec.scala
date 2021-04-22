@@ -268,12 +268,12 @@ class EventStreamSpec extends munit.FunSuite {
     assertEquals(1, received)
   }
 
-  test("ensure mapAsync maintains the order of mapped events") {
+  test("ensure mapSync maintains the order of mapped events") {
     implicit val dq: DispatchQueue = UnlimitedDispatchQueue()
 
     val source = EventStream[Int]()
 
-    val mappedAsync = source.mapAsync { n =>
+    val mappedSync = source.mapSync { n =>
       if (n % 2 == 0) Future {
         Thread.sleep(500)
         n + 100
@@ -282,12 +282,12 @@ class EventStreamSpec extends munit.FunSuite {
       }
     }
 
-    val resultsAsync = ArrayBuffer[Int]()
+    val resultsSync = ArrayBuffer[Int]()
     val waitForMe = Promise[Unit]()
 
-    mappedAsync.foreach { n =>
-      resultsAsync += n
-      if (resultsAsync.length == 4) waitForMe.success(())
+    mappedSync.foreach { n =>
+      resultsSync += n
+      if (resultsSync.length == 4) waitForMe.success(())
     }
 
     source ! 2
@@ -297,7 +297,7 @@ class EventStreamSpec extends munit.FunSuite {
 
     result(waitForMe.future)
 
-    assertEquals(resultsAsync.toSeq, Seq(102, 103, 104, 105))
+    assertEquals(resultsSync.toSeq, Seq(102, 103, 104, 105))
   }
 
   test("filter numbers to even and odd") {

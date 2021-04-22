@@ -12,7 +12,7 @@ import scala.concurrent.Future
   * will be attached to the end of the ongoing processing and triggered only after it's done.
   *
   * @todo `Serialized` is currently used in only one place in wire-signals, `FutureEventStream`, which in turn is used only for
-  *       [[EventStream.mapAsync]], so we may think or removing this class from the library (move to extensions, maybe?).
+  *       [[EventStream.mapSync]], so we may think or removing this class from the library (move to extensions, maybe?).
   */
 object Serialized {
   private implicit lazy val dispatcher: DispatchQueue = SerialDispatchQueue("Serialized")
