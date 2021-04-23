@@ -17,8 +17,6 @@
  */
 package com.wire.signals
 
-import com.wire.signals.CancellableFuture.CancelException
-
 import java.util.{Timer, TimerTask}
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent._
@@ -55,7 +53,6 @@ object CancellableFuture {
   /** Creates `CancellableFuture[T]` from the given function with the result type of `T`.
     *
     * @param body The function to be executed asynchronously
-    * @param onCancel An optional function to be called if the new cancellable future is cancelled
     * @param ec The execution context
     * @tparam T The result type of the given function
     * @return A cancellable future executing the function
@@ -463,9 +460,8 @@ abstract class CancellableFuture[+T](implicit ec: ExecutionContext = Threading.d
   * @param promise The promise a new cancellable future wraps around.
   *                Note that usually you will create a new cancellable future by lifting a future or simply by
   *                providing the expression to be executed.
-  * @param onCancel
-  * @param ec
-  * @tparam T
+  * @param ec The execution context
+  * @tparam T The result type of the cancellable future
   */
 class Cancellable[+T](promise: Promise[T])
                      (implicit ec: ExecutionContext = Threading.defaultContext) extends CancellableFuture[T] {
