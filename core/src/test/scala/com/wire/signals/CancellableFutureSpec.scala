@@ -66,7 +66,7 @@ class CancellableFutureSpec extends munit.FunSuite {
     val f = p.future
     f.foreach { res = _ }
 
-    val cf = new Cancellable(p, Some { () => res = -1 })
+    val cf = new Cancellable(p).onCancel { res = -1 }
 
     p.success(1)
     assertEquals(result(f), 1)
@@ -84,7 +84,7 @@ class CancellableFutureSpec extends munit.FunSuite {
     val f = p.future
     f.foreach { res ! _ }
 
-    val cf = new Cancellable(p, Some { () => res ! -1 })
+    val cf = new Cancellable(p).onCancel { res ! -1 }
 
     assert(cf.cancel())
     await(cf)
@@ -100,7 +100,7 @@ class CancellableFutureSpec extends munit.FunSuite {
     val f = p.future
     f.foreach { res ! _ }
 
-    val cf = new Cancellable(p, Some { () => res ! -1 })
+    val cf = new Cancellable(p).onCancel { res ! -1 }
 
     assert(cf.cancel())
     await(cf)
@@ -252,7 +252,7 @@ class CancellableFutureSpec extends munit.FunSuite {
     val cf3 = CancellableFuture.delayed(500.millis) { timestamps :+= (System.currentTimeMillis - offset) }
     val cf4 = CancellableFuture.delayed(600.millis) { timestamps :+= (System.currentTimeMillis - offset) }
 
-    val cfSeq = CancellableFuture.sequence(Seq(cf1, cf2, cf3, cf4), Some(() => onCancel ! true))
+    val cfSeq = CancellableFuture.sequence(Seq(cf1, cf2, cf3, cf4)).onCancel { onCancel ! true }
     Thread.sleep(50)
     cfSeq.cancel()
     waitForResult(onCancel, true)
@@ -389,7 +389,7 @@ class CancellableFutureSpec extends munit.FunSuite {
 
     val s = Signal(0)
 
-    val cf = CancellableFuture(body = { Thread.sleep(200); s ! 1 }, onCancel = { s ! 2 })
+    val cf = CancellableFuture { Thread.sleep(200); s ! 1 }.onCancel { s ! 2 }
     assert(cf.isCancellable)
 
     CancellableFuture.delayed(50.millis) { assert(cf.cancel()) }
@@ -404,7 +404,7 @@ class CancellableFutureSpec extends munit.FunSuite {
 
     val s = Signal(0)
 
-    val cf = CancellableFuture.delayed(200.millis)(body = { s ! 1 }, onCancel = { s ! 2 })
+    val cf = CancellableFuture.delayed(200.millis){ s ! 1 }.onCancel { s ! 2 }
     assert(cf.isCancellable)
 
     CancellableFuture.delayed(50.millis) { assert(cf.cancel()) }
@@ -418,15 +418,39 @@ class CancellableFutureSpec extends munit.FunSuite {
     import Threading.defaultContext
     var res = 0
 
-    val cf: CancellableFuture[Unit] = CancellableFuture(
-      body = { Thread.sleep(500); res = 1 },
-      onCancel = { res = 2 }
-    )
+    val cf: CancellableFuture[Unit] = CancellableFuture { Thread.sleep(500); res = 1 }.onCancel { res = 2 }
 
     assertEquals(res, 0)
     case object FailureException extends Throwable
     assert(cf.fail(FailureException))
 
+    await(cf)
+
+    assertEquals(res, 0)
+  }
+
+  test("onCancel added after the future is already finished won't work") {
+    import Threading.defaultContext
+    var res = 0
+
+    val cf: CancellableFuture[Unit] = CancellableFuture { res = 1 }
+    await(cf)
+    assertEquals(res, 1)
+    cf.onCancel { res = 2 }
+    cf.cancel()
+    await(cf)
+
+    assertEquals(res, 1)
+  }
+
+  test("onCancel added after the future is already cancelled won't work") {
+    import Threading.defaultContext
+    var res = 0
+
+    val cf: CancellableFuture[Unit] = CancellableFuture { Thread.sleep(500); res = 1 }
+    cf.cancel()
+    await(cf)
+    cf.onCancel { res = 2 }
     await(cf)
 
     assertEquals(res, 0)
@@ -454,10 +478,7 @@ class CancellableFutureSpec extends munit.FunSuite {
 
     val s = Signal("")
 
-    val cf1 = CancellableFuture(
-      body = { Thread.sleep(500); s ! "foo"; "foo" },
-      onCancel = { s ! "bar" }
-    )
+    val cf1 = CancellableFuture { Thread.sleep(500); s ! "foo"; "foo" }.onCancel { s ! "bar" }
     val cf2 = cf1.map(_.toUpperCase)
 
     assert(cf2.cancel())
@@ -482,10 +503,7 @@ class CancellableFutureSpec extends munit.FunSuite {
 
     val s = Signal("")
 
-    val cf1 = CancellableFuture(
-      body = { Thread.sleep(500); s ! "foo"; "foo" },
-      onCancel = { s ! "bar" }
-    )
+    val cf1 = CancellableFuture { Thread.sleep(500); s ! "foo"; "foo" }.onCancel { s ! "bar" }
     val cf2 = cf1.flatMap {
       case ""    => CancellableFuture.successful("boo")
       case other => CancellableFuture { Thread.sleep(500); other.toUpperCase }

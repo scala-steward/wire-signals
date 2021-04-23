@@ -60,11 +60,8 @@ object CancellableFuture {
     * @tparam T The result type of the given function
     * @return A cancellable future executing the function
     */
-  @inline def apply[T](body: => T, onCancel: => Unit = ())(implicit ec: ExecutionContext = Threading.defaultContext): CancellableFuture[T] =
-    new Cancellable(
-      returning(new PromiseCompletingRunnable(body))(ec.execute).promise,
-      Some(() => onCancel)
-    )
+  @inline def apply[T](body: => T)(implicit ec: ExecutionContext = Threading.defaultContext): CancellableFuture[T] =
+    new Cancellable(returning(new PromiseCompletingRunnable(body))(ec.execute).promise)
 
   /** Turns a regular `Future[T]` into `CancellableFuture[T]`.
     *
@@ -77,12 +74,12 @@ object CancellableFuture {
   /** Creates an empty cancellable future that will start its execution after the given time.
     * Typically used together with `map` or a similar method to execute computation with a delay.
     */
-  def delay(duration: FiniteDuration, onCancel: => Unit = ())(implicit executionContext: ExecutionContext = Threading.defaultContext): CancellableFuture[Unit] =
+  def delay(duration: FiniteDuration)(implicit executionContext: ExecutionContext = Threading.defaultContext): CancellableFuture[Unit] =
     if (duration <= Duration.Zero) successful(())
     else {
       val p = Promise[Unit]()
       val task = schedule(() => p.trySuccess(()), duration.toMillis)
-      new Cancellable(p, Some(() => { task.cancel(); onCancel }))
+      new Cancellable(p).onCancel(task.cancel())
     }
 
   /** Creates an empty cancellable future which will repeat the mapped computation every given `duration`
@@ -94,16 +91,16 @@ object CancellableFuture {
     * @param body A task repeated every `duration`.
     * @return A cancellable future representing the whole repeating process.
     */
-  def repeat(duration: Duration)(body: => Unit, onCancel: => Unit = ())(implicit ec: ExecutionContext = Threading.defaultContext): CancellableFuture[Unit] = {
+  def repeat(duration: Duration)(body: => Unit)(implicit ec: ExecutionContext = Threading.defaultContext): CancellableFuture[Unit] = {
     if (duration <= Duration.Zero)
       successful(())
     else
-      newRepeatFuture(duration.toMillis, body, onCancel)
+      newRepeatFuture(duration.toMillis, body)
   }
 
-  private def newRepeatFuture(duration: Long, body: => Unit, onCancel: => Unit)(implicit ec: ExecutionContext) = {
+  private def newRepeatFuture(duration: Long, body: => Unit)(implicit ec: ExecutionContext) = {
     val promise = Promise[Unit]()
-    new Cancellable(promise, Some(() => onCancel)) {
+    new Cancellable(promise) {
       @volatile private var currentTask: Option[TimerTask] = None
       startNewTimeoutLoop()
 
@@ -124,9 +121,9 @@ object CancellableFuture {
 
   /** A utility method that combines `delay` with `map`.
     */
-  def delayed[T](duration: FiniteDuration)(body: => T, onCancel: => Unit = ())(implicit ec: ExecutionContext = Threading.defaultContext): CancellableFuture[T] =
-    if (duration <= Duration.Zero) CancellableFuture(body, onCancel)
-    else delay(duration, onCancel).map { _ => body }
+  def delayed[T](duration: FiniteDuration)(body: => T)(implicit ec: ExecutionContext = Threading.defaultContext): CancellableFuture[T] =
+    if (duration <= Duration.Zero) CancellableFuture(body)
+    else delay(duration).map { _ => body }
 
   /** Creates an already completed `CancellableFuture[T]` with the specified result.
     */
@@ -150,7 +147,7 @@ object CancellableFuture {
     *     with the same reason as the original one and all other original futures will be cancelled (if they are not
     *     uncancellable) - i.e. they will not fail with the original reason but with `CancelException`
     */
-  def sequence[T](futures: Iterable[CancellableFuture[T]], onCancel: Option[() => Unit] = None)
+  def sequence[T](futures: Iterable[CancellableFuture[T]])
                  (implicit executor: ExecutionContext): CancellableFuture[Iterable[T]] = {
     val results = new ArrayBuffer[(Int, T)](futures.size)
     val promise = Promise[Iterable[T]]()
@@ -171,7 +168,7 @@ object CancellableFuture {
       case _ =>
     }
 
-    new Cancellable(promise, onCancel)
+    new Cancellable(promise)
   }
 
   /** Transforms an `Iterable[T]` into a `CancellableFuture[Iterable[U]]` using
@@ -181,9 +178,9 @@ object CancellableFuture {
     *
     * @see `sequence` for cancellation rules
     */
-  def traverse[T, U](in: Iterable[T], onCancel: Option[() => Unit] = None)(f: T => CancellableFuture[U])
+  def traverse[T, U](in: Iterable[T])(f: T => CancellableFuture[U])
                     (implicit executor: ExecutionContext): CancellableFuture[Iterable[U]] =
-    sequence(in.map(f), onCancel)
+    sequence(in.map(f))
 
   /** Transforms an `Iterable[T]` into a `CancellableFuture[Iterable[U]]` using
     * the provided function `T => CancellableFuture[U]`. Each cancellable future will be executed
@@ -258,6 +255,15 @@ abstract class CancellableFuture[+T](implicit ec: ExecutionContext = Threading.d
     */
   def fail(ex: Throwable): Boolean
 
+  def onCancel(body: => Unit): CancellableFuture[T] = {
+    if (isCancellable)
+      future.onComplete {
+        case Failure(CancelException) => body
+        case _ =>
+      }
+    this
+  }
+
   /** Cancels this future after the given timeout.
     *
     * @param timeout A time interval after which this future is cancelled
@@ -289,17 +295,17 @@ abstract class CancellableFuture[+T](implicit ec: ExecutionContext = Threading.d
     */
   final def map[U](f: T => U)(implicit executor: ExecutionContext = ec): CancellableFuture[U] = {
     val p = Promise[U]()
-    @volatile var onCancel: Option[() => Unit] = Some(() => Future(self.cancel())(executor))
+    @volatile var cancelSelf: Option[() => Unit] = Some(() => Future(self.cancel())(executor))
 
     future.onComplete { v =>
-      onCancel = None
+      cancelSelf = None
       p.tryComplete(v.flatMap(res => Try(f(res))))
     }(executor)
 
     new Cancellable(p)(executor) {
       override def cancel(): Boolean =
         if (super.cancel()) {
-          onCancel.foreach(_())
+          cancelSelf.foreach(_())
           true
         } else false
     }
@@ -334,18 +340,18 @@ abstract class CancellableFuture[+T](implicit ec: ExecutionContext = Threading.d
     */
   final def flatMap[S](f: T => CancellableFuture[S])(implicit executor: ExecutionContext = ec): CancellableFuture[S] = {
     val p = Promise[S]()
-    @volatile var onCancel: Option[() => Unit] = Some(() => self.cancel())
+    @volatile var cancelSelf: Option[() => Unit] = Some(() => self.cancel())
 
     self.future.onComplete { res =>
-      onCancel = None
+      cancelSelf = None
       if (!p.isCompleted) res match {
         case f: Failure[_] => p.tryComplete(f.asInstanceOf[Failure[S]])
         case Success(v) =>
           Try(f(v)) match {
             case Success(future) =>
-              onCancel = Some(() => future.cancel())
+              cancelSelf = Some(() => future.cancel())
               future.onComplete { res =>
-                onCancel = None
+                cancelSelf = None
                 p.tryComplete(res)
               }(executor)
               if (p.isCompleted) future.cancel()
@@ -358,7 +364,7 @@ abstract class CancellableFuture[+T](implicit ec: ExecutionContext = Threading.d
     new Cancellable(p)(executor) {
       override def cancel(): Boolean =
         if (super.cancel()) {
-          Future(onCancel.foreach(_ ()))(executor)
+          Future(cancelSelf.foreach(_ ()))(executor)
           true
         } else false
     }
@@ -380,16 +386,16 @@ abstract class CancellableFuture[+T](implicit ec: ExecutionContext = Threading.d
   final def recoverWith[U >: T](pf: PartialFunction[Throwable, CancellableFuture[U]])
                          (implicit executor: ExecutionContext = ec): CancellableFuture[U] = {
     val p = Promise[U]()
-    @volatile var onCancel: Option[() => Unit] = Some(() => self.cancel())
+    @volatile var cancelSelf: Option[() => Unit] = Some(() => self.cancel())
 
     future.onComplete { res =>
-      onCancel = None
+      cancelSelf = None
       if (!p.isCompleted) res match {
         case Failure(t) if pf.isDefinedAt(t) =>
           val future = pf.applyOrElse(t, (_: Throwable) => this)
-          onCancel = Some(() => future.cancel())
+          cancelSelf = Some(() => future.cancel())
           future.onComplete { res =>
-            onCancel = None
+            cancelSelf = None
             p.tryComplete(res)
           }(executor)
           if (p.isCompleted) future.cancel()
@@ -401,7 +407,7 @@ abstract class CancellableFuture[+T](implicit ec: ExecutionContext = Threading.d
     new Cancellable(p)(executor) {
       override def cancel(): Boolean =
         if (super.cancel()) {
-          Future(onCancel.foreach(_ ()))(executor)
+          Future(cancelSelf.foreach(_ ()))(executor)
           true
         } else false
     }
@@ -461,14 +467,9 @@ abstract class CancellableFuture[+T](implicit ec: ExecutionContext = Threading.d
   * @param ec
   * @tparam T
   */
-class Cancellable[+T](promise: Promise[T], onCancel: Option[() => Unit] = None)
+class Cancellable[+T](promise: Promise[T])
                      (implicit ec: ExecutionContext = Threading.defaultContext) extends CancellableFuture[T] {
   override val future: Future[T] = promise.future
-
-  onCancel.foreach(f => future.onComplete {
-    case Failure(CancelException) => f()
-    case _ =>
-  })
 
   override def fail(ex: Throwable): Boolean = promise.tryFailure(ex)
 
