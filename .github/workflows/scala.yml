@@ -18,4 +18,4 @@ jobs:
       with:
         java-version: 11
     - name: Run tests (core)
-      run: cd core; sbt test
+      run: cd core; sbt jacoco
