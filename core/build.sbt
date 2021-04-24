@@ -5,7 +5,10 @@ lazy val scala212 = "2.12.12"
 lazy val scala211 = "2.11.12"
 lazy val supportedScalaVersions = List(scala213, scala212, scala211)
 
-ThisBuild / organization := "com.wire"
+organization := "com.wire"
+name := "wire-signals"
+homepage := Some(url("https://github.com/wireapp/wire-signals"))
+licenses := Seq("GPL 3.0" -> url("https://www.gnu.org/licenses/gpl-3.0.en.html"))
 ThisBuild / scalaVersion := scala213
 Test / scalaVersion := scala213
 
@@ -46,8 +49,6 @@ val scala213Options = Seq(
   "-opt:inline"
 )
 
-homepage := Some(url("https://github.com/wireapp/wire-signals"))
-licenses := Seq("GPL 3.0" -> url("https://www.gnu.org/licenses/gpl-3.0.en.html"))
 publishMavenStyle := true
 Test / publishArtifact := false
 pomIncludeRepository := { _ => false }
@@ -105,4 +106,4 @@ mimaPreviousArtifacts := Set("com.wire" %% "wire-signals" % "0.4.0")
 
 exportJars := true
 Compile / packageBin / packageOptions +=
-  Package.ManifestAttributes("Automatic-Module-Name" -> "wire-signals")
+  Package.ManifestAttributes("Automatic-Module-Name" -> name.value)

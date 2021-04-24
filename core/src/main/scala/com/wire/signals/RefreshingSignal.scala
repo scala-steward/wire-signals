@@ -60,7 +60,7 @@ class RefreshingSignal[V](loader: () => CancellableFuture[V], refreshStream: Eve
   private def reload(): Unit = subscription.foreach { _ =>
     loadFuture.cancel()
     val p = Promise[Unit]()
-    val thisReload = CancellableFuture.lift(p.future)
+    val thisReload = CancellableFuture.from(p)
     loadFuture = thisReload
     loader().onComplete {
       case Success(v) if loadFuture == thisReload =>
