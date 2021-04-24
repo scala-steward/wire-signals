@@ -32,7 +32,7 @@ object Serialized {
     */
   def apply[T](key: String)(body: => CancellableFuture[T]): CancellableFuture[T] = dispatcher {
     val future = locks.get(key).fold(body) { lock =>
-      CancellableFuture.lift(lock.recover { case _ => }).flatMap(_ => body)
+      CancellableFuture.apply(lock.recover { case _ => }).flatMap(_ => body)
     }
     val lock = future.future
     locks += (key -> lock)

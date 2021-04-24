@@ -60,13 +60,25 @@ object CancellableFuture {
   @inline def apply[T](body: => T)(implicit ec: ExecutionContext = Threading.defaultContext): CancellableFuture[T] =
     new Cancellable(returning(new PromiseCompletingRunnable(body))(ec.execute).promise)
 
-  /** Turns a regular `Future[T]` into `CancellableFuture[T]`.
+  /** Turns a regular `Future[T]` into an **uncancellable** `CancellableFuture[T]`.
     *
     * @param future The future to be lifted
+    * @param ec The execution context
     * @tparam T The future's result type
-    * @return A new cancellable future wrapped over the original future
+    * @return A new **uncancellable** future wrapped over the original future
     */
-  @inline def lift[T](future: Future[T]): CancellableFuture[T] = new Uncancellable(future)
+  @inline def lift[T](future: Future[T])(implicit ec: ExecutionContext = Threading.defaultContext): CancellableFuture[T] =
+    new Uncancellable(future)
+
+  /** Turns a `Promise[T]` into a **cancellable** `CancellableFuture[T]`.
+    *
+    * @param promise The promise to be lifted
+    * @param ec The execution context
+    * @tparam T The promise's result type
+    * @return A new **cancellable** future wrapped over the original promise
+    */
+  @inline def from[T](promise: Promise[T])(implicit ec: ExecutionContext = Threading.defaultContext): CancellableFuture[T] =
+    new Cancellable(promise)
 
   /** Creates an empty cancellable future that will start its execution after the given time.
     * Typically used together with `map` or a similar method to execute computation with a delay.
