@@ -76,8 +76,6 @@ resolvers ++= Seq(
   Resolver.mavenLocal
 )
 
-publishMavenStyle := true
-
 publishConfiguration      := publishConfiguration.value.withOverwrite(true)
 publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true)
 publishM2Configuration    := publishM2Configuration.value.withOverwrite(true)
@@ -89,7 +87,7 @@ lazy val root = (project in file("."))
     name := "wire-signals-extensions",
     crossScalaVersions := supportedScalaVersions,
     libraryDependencies ++= Seq(
-      "com.wire" %% "wire-signals" % "0.4.0" % Provided,
+      "com.wire" %% "wire-signals" % "0.4.2" % Provided,
       "org.threeten" %  "threetenbp" % "1.4.4" % Provided,
       //Test dependencies
       "org.scalameta" %% "munit" % "0.7.21" % Test
@@ -111,4 +109,4 @@ exportJars := true
 Compile / packageBin / packageOptions +=
   Package.ManifestAttributes("Automatic-Module-Name" -> "wire-signals-extensions")
 
-
+usePgpKeyHex(sys.env.getOrElse("PGP_KEY_HEX", ""))

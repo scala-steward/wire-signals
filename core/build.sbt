@@ -107,3 +107,5 @@ mimaPreviousArtifacts := Set("com.wire" %% "wire-signals" % "0.4.0")
 exportJars := true
 Compile / packageBin / packageOptions +=
   Package.ManifestAttributes("Automatic-Module-Name" -> "wire-signals")
+
+usePgpKeyHex(sys.env.getOrElse("PGP_KEY_HEX", ""))
