@@ -2,7 +2,7 @@ package com.wire.signals
 
 import scala.concurrent.ExecutionContext
 
-trait EventSource[E, S] {
+abstract class EventSource[E, S] {
   private object subscribersMonitor
 
   private[this] var autowiring = true
@@ -112,33 +112,3 @@ trait EventSource[E, S] {
   @inline final def wired: Boolean = hasSubscribers || !autowiring
 }
 
-
-/** [[Subscription]]s created for a [[ForcedEventSource]] cannot be unsubscribed.
-  * They will stay subscribed until destroyed.
-  *
-  * You can use it as a tag when creating a new event source, e.g.
-  * {{{
-  *   val eventStream = new SourceStream[Boolean]
-  *   val subscription = eventStream { b => /* ... */ }
-  *   subscription.unsubscribe()
-  * }}}
-  * here [[Subscription.unsubscribe]] will temporarily unsubscribe the subscription
-  * (i.e. the body function will stop receiving events until the consecutive call to [[Subscription.subscribe]])
-  * but
-  * {{{
-  *   val eventStream = new SourceStream[Boolean] with ForcedEventRelay[Boolean, SignalSubscriber]
-  *   val subscription = eventStream.onCurrent { b => /* ... */ }
-  *   subscription.unsubscribe()
-  * }}}
-  * here [[Subscription.unsubscribe]] will do nothing.
-  *
-  * @tparam E The type of events emitted by the event source.
-  */
-
-trait ForcedEventSource[E, S] extends EventSource[E, S] {
-  abstract override def on(ec: ExecutionContext)(body: E => Unit)(implicit context: EventContext = EventContext.Global): Subscription =
-    returning(super.on(ec)(body))(_.disablePauseWithContext())
-
-  abstract override def onCurrent(body: E => Unit)(implicit context: EventContext = EventContext.Global): Subscription =
-    returning(super.onCurrent(body))(_.disablePauseWithContext())
-}

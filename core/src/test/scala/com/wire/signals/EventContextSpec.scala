@@ -17,8 +17,6 @@
  */
 package com.wire.signals
 
-import com.wire.signals.Signal.SignalSubscriber
-
 class EventContextSpec extends munit.FunSuite {
   private var received = Seq[Int]()
   private val capture = (value: Int) => received = received :+ value
@@ -79,32 +77,5 @@ class EventContextSpec extends munit.FunSuite {
     assertEquals(s.hasSubscribers, false)
 
     assertEquals(received, Seq(0, 1, 2, 3, 5, 6, 7))
-  }
-
-  test("Pausing, resuming and destroying a normal event context, but with forced event sources") {
-    implicit val ec: EventContext = EventContext()
-    val s = new SourceSignal[Int](Some(0)) with ForcedEventSource[Int, SignalSubscriber]
-    s.onCurrent(capture)
-
-    assertEquals(s.hasSubscribers, true)
-    Seq(1, 2).foreach(s ! _)
-
-    ec.start()
-    s ! 3
-    assertEquals(s.hasSubscribers, true)
-
-    ec.stop()
-    Seq(4, 5) foreach (s ! _)
-    assertEquals(s.hasSubscribers, true)
-
-    ec.start()
-    Seq(6, 7) foreach (s ! _)
-    assertEquals(s.hasSubscribers, true)
-
-    ec.destroy()
-    Seq(8, 9) foreach (s ! _)
-    assertEquals(s.hasSubscribers, false)
-
-    assertEquals(received, Seq(0, 1, 2, 3, 4, 5, 6, 7))
   }
 }
