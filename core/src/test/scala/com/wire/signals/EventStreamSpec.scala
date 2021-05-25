@@ -17,9 +17,8 @@
  */
 package com.wire.signals
 
-import com.wire.signals.testutils.{andThen, awaitAllTasks, result}
+import com.wire.signals.testutils.{awaitAllTasks, result, waitForResult}
 
-import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
@@ -115,19 +114,18 @@ class EventStreamSpec extends munit.FunSuite {
     val stream2 = EventStream[Int]()
     val zip = EventStream.zip(stream1, stream2)
 
-    var expected: Int = 0
-    var eventReceived = false
+    val expected = Signal(0)
+    val eventReceived = Signal(false)
     zip.foreach { n =>
-      eventReceived = true
-      assertEquals(n, expected)
+      eventReceived ! true
+      waitForResult(expected, n)
     }
 
     def test(n: Int, source: SourceStream[Int]): Unit = {
-      eventReceived = false
-      expected = n
+      eventReceived ! false
+      expected ! n
       source ! n
-      andThen(100)
-      assert(eventReceived)
+      waitForResult(eventReceived, true)
     }
 
     test(1, stream1)
@@ -141,19 +139,18 @@ class EventStreamSpec extends munit.FunSuite {
     val stream2 = EventStream[Int]()
     val zip = stream1.zip(stream2)
 
-    var expected: Int = 0
-    var eventReceived = false
+    val expected = Signal(0)
+    val eventReceived = Signal(false)
     zip.foreach { n =>
-      eventReceived = true
-      assertEquals(n, expected)
+      eventReceived ! true
+      waitForResult(expected, n)
     }
 
     def test(n: Int, source: SourceStream[Int]): Unit = {
-      eventReceived = false
-      expected = n
+      eventReceived ! false
+      expected ! n
       source ! n
-      andThen(100)
-      assert(eventReceived)
+      waitForResult(eventReceived, true)
     }
 
     test(1, stream1)
@@ -166,20 +163,19 @@ class EventStreamSpec extends munit.FunSuite {
     val stream1 = EventStream[Int]()
     val stream2 = EventStream[Int]()
 
-    var expected: Int = 0
-    var eventReceived = false
+    val expected = Signal(0)
+    val eventReceived = Signal(false)
     stream1.pipeTo(stream2)
     stream2.foreach { n =>
-      eventReceived = true
-      assertEquals(n, expected)
+      eventReceived ! true
+      waitForResult(expected, n)
     }
 
     def test(n: Int): Unit = {
-      eventReceived = false
-      expected = n
+      eventReceived ! false
+      expected ! n
       stream1 ! n
-      andThen(100)
-      assert(eventReceived)
+      waitForResult(eventReceived, true)
     }
 
     test(1)
@@ -192,20 +188,19 @@ class EventStreamSpec extends munit.FunSuite {
     val stream1 = EventStream[Int]()
     val stream2 = EventStream[Int]()
 
-    var expected: Int = 0
-    var eventReceived = false
+    val expected = Signal(0)
+    val eventReceived = Signal(false)
     stream1 | stream2
     stream2.foreach { n =>
-      eventReceived = true
-      assertEquals(n, expected)
+      eventReceived ! true
+      waitForResult(expected, n)
     }
 
     def test(n: Int): Unit = {
-      eventReceived = false
-      expected = n
+      eventReceived ! false
+      expected ! n
       stream1 ! n
-      andThen(100)
-      assert(eventReceived)
+      waitForResult(eventReceived, true)
     }
 
     test(1)
@@ -218,19 +213,18 @@ class EventStreamSpec extends munit.FunSuite {
     val signal = Signal[Int]()
     val stream = EventStream.from(signal)
 
-    var expected: Int = 0
-    var eventReceived = false
+    val expected = Signal(0)
+    val eventReceived = Signal(false)
     stream.foreach { n =>
-      eventReceived = true
-      assertEquals(n, expected)
+      eventReceived ! true
+      waitForResult(expected, n)
     }
 
     def test(n: Int): Unit = {
-      eventReceived = false
-      expected = n
+      eventReceived ! false
+      expected ! n
       signal ! n
-      andThen(100)
-      assert(eventReceived)
+      waitForResult(eventReceived, true)
     }
 
     test(1)
@@ -243,14 +237,13 @@ class EventStreamSpec extends munit.FunSuite {
     val promise = Promise[Int]()
     val stream = EventStream.from(promise.future)
 
-    var received: Int = 0
+    val received = Signal(0)
     stream.foreach { n =>
-      received = n
+      received ! n
     }
 
     promise.success(1)
-    Thread.sleep(100)
-    assertEquals(1, received)
+    waitForResult(received, 1)
   }
 
   test("create an event stream from a future on a separate execution context") {
@@ -258,14 +251,13 @@ class EventStreamSpec extends munit.FunSuite {
     val promise = Promise[Int]()
     val stream = EventStream.from(promise.future, dq)
 
-    var received: Int = 1
+    val received = Signal(0)
     stream.foreach { n =>
-      received = n
+      received ! n
     }
 
     promise.success(1)
-    awaitAllTasks
-    assertEquals(1, received)
+    waitForResult(received, 1)
   }
 
   test("ensure mapSync maintains the order of mapped events") {
@@ -282,12 +274,10 @@ class EventStreamSpec extends munit.FunSuite {
       }
     }
 
-    val resultsSync = ArrayBuffer[Int]()
-    val waitForMe = Promise[Unit]()
+    val resultsSync = Signal(Seq.empty[Int])
 
     mappedSync.foreach { n =>
-      resultsSync += n
-      if (resultsSync.length == 4) waitForMe.success(())
+      resultsSync.mutate(_ :+ n)
     }
 
     source ! 2
@@ -295,9 +285,7 @@ class EventStreamSpec extends munit.FunSuite {
     source ! 4
     source ! 5
 
-    result(waitForMe.future)
-
-    assertEquals(resultsSync.toSeq, Seq(102, 103, 104, 105))
+    waitForResult(resultsSync, Seq(102, 103, 104, 105))
   }
 
   test("filter numbers to even and odd") {

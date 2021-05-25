@@ -1,17 +1,12 @@
 package com.wire.signals
 
-import com.wire.signals.testutils.{andThen, awaitAllTasks, withDelay}
+import com.wire.signals.testutils.{awaitAllTasks, waitForResult}
 
 class FlatMapEventStreamSpec extends munit.FunSuite {
-  private var received = List.empty[Int]
-  private val capture = (value: Int) => received :+= value
-
-  override def beforeEach(context: BeforeEach): Unit = {
-    received = List.empty[Int]
-  }
-
   test("Normal flatmapping") {
     implicit val dispatchQueue: DispatchQueue = SerialDispatchQueue()
+    val received = Signal(Seq.empty[Int])
+    val capture: Int => Unit = { value => received.mutate(_ :+ value) }
 
     val switch = EventStream[Boolean]()
     val source1 = EventStream[Int]()
@@ -23,47 +18,45 @@ class FlatMapEventStreamSpec extends munit.FunSuite {
     }
     result.foreach(capture)
 
-    assertEquals(received, Nil)
+    waitForResult(received, Seq.empty)
     source1 ! 1
     awaitAllTasks
-    assertEquals(received, Nil) // result not set yet
+    waitForResult(received, Seq.empty) // result not set yet
     source2 ! 2
     awaitAllTasks
-    assertEquals(received, Nil) // result not set yet
+    waitForResult(received, Seq.empty) // result not set yet
 
     switch ! true
 
     source2 ! 2
     awaitAllTasks
-    assertEquals(received, Nil) // result set to source1, so events from source2 are ignored
+    waitForResult(received, Seq.empty) // result set to source1, so events from source2 are ignored
     source1 ! 1
-    awaitAllTasks
-    assertEquals(received, List(1))  // yay!
+    waitForResult(received, Seq(1))  // yay!
     source1 ! 1
-    awaitAllTasks
-    assertEquals(received, List(1, 1))  // yay!
+    waitForResult(received, Seq(1, 1))  // yay!
 
     switch ! false
 
     source1 ! 1
     awaitAllTasks
-    assertEquals(received, List(1, 1))  // no 3x1 because result now switched to source2
+    waitForResult(received, Seq(1, 1))  // no 3x1 because result now switched to source2
     source2 ! 2
-    awaitAllTasks
-    assertEquals(received, List(1, 1, 2))  // yay!
+    waitForResult(received, Seq(1, 1, 2))  // yay!
 
     switch ! true
 
     source2 ! 2
     awaitAllTasks
-    assertEquals(received, List(1, 1, 2)) // result switched back to source1, so events from source2 are ignored again
+    waitForResult(received, Seq(1, 1, 2)) // result switched back to source1, so events from source2 are ignored again
     source1 ! 1
-    awaitAllTasks
-    assertEquals(received, List(1, 1, 2, 1))  // yay!
+    waitForResult(received, Seq(1, 1, 2, 1))  // yay!
   }
 
   test("Chained flatmapping") {
     implicit val dispatchQueue: DispatchQueue = SerialDispatchQueue()
+    val received = Signal(Seq.empty[Int])
+    val capture: Int => Unit = { value => received.mutate(_ :+ value) }
 
     val switch  = EventStream[Boolean]()
     val switch1 = EventStream[Boolean]()
@@ -79,34 +72,35 @@ class FlatMapEventStreamSpec extends munit.FunSuite {
 
     result.foreach(capture)
 
-    assertEquals(received, Nil)
+    waitForResult(received, Seq.empty)
 
     switch ! true
     awaitAllTasks
-    assertEquals(received, Nil)
+    waitForResult(received, Seq.empty)
 
     switch1 ! true
     source1 ! 1
-    awaitAllTasks
-    assertEquals(received, List(1))
+    waitForResult(received, Seq(1))
 
     source2 ! 2
     awaitAllTasks
-    assertEquals(received, List(1))
+    waitForResult(received, Seq(1))
 
     switch ! false
     source1 ! 1
     awaitAllTasks
-    assertEquals(received, List(1))
+    waitForResult(received, Seq(1))
 
     switch2 ! false
     source2 ! 2
     source1 ! 1
-    awaitAllTasks
-    assertEquals(received, List(1, 2))
+    waitForResult(received, Seq(1, 2))
   }
 
   test("No subscribers will be left behind") {
+    val received = Signal(Seq.empty[Int])
+    val capture: Int => Unit = { value => received.mutate(_ :+ value) }
+
     val switch = EventStream[Boolean]()
     val source1 = EventStream[Int]()
     val source2 = EventStream[Int]()

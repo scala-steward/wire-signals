@@ -1,6 +1,6 @@
 // based on http://caryrobbins.com/dev/sbt-publishing/
 
-lazy val scala213 = "2.13.5"
+lazy val scala213 = "2.13.6"
 lazy val scala212 = "2.12.12"
 lazy val scala211 = "2.11.12"
 lazy val supportedScalaVersions = List(scala213, scala212, scala211)
@@ -46,7 +46,8 @@ val scala213Options = Seq(
   "-opt:allow-skip-core-module-init",
   "-opt:assume-modules-non-null",
   "-opt:allow-skip-class-loading",
-  "-opt:inline"
+  "-opt:inline",
+  "-Xsource:3"
 )
 
 publishMavenStyle := true

@@ -17,54 +17,52 @@
  */
 package com.wire.signals
 
-import com.wire.signals.testutils.andThen
+import com.wire.signals.testutils.waitForResult
 
 class MapSignalSpec extends munit.FunSuite {
-  private var received = Seq[Int]()
-  private val capture = (value: Int) => received = received :+ value
-
-  override def beforeEach(context: BeforeEach): Unit = {
-    received = Seq.empty[Int]
-  }
-
   test("Normal mapping") {
+    val received = Signal(Seq.empty[Int])
+    val capture: Int => Unit = { value => received.mutate(_ :+ value) }
+
     val s = Signal(1)
     val m = s map (_ * 2)
     m.onCurrent(capture)
 
     Seq(2, 3, 1) foreach (s ! _)
-    assertEquals(received, Seq(2, 4, 6, 2))
+    waitForResult(received, Seq(2, 4, 6, 2))
   }
 
   test("Mapping nulls") {
-    @volatile var vv: Option[String] = Some("invalid")
+    val vv = Signal(Option("invalid"))
     val s = Signal("start")
     val m = s.map(Option(_))
-    m.foreach { vv = _ }
-    andThen()
-    assertEquals(vv, Some("start"))
+    m.foreach { vv ! _ }
+    waitForResult(vv, Some("start"))
     s ! "meep"
-    andThen()
-    assertEquals(vv, Some("meep"))
+    waitForResult(vv, Some("meep"))
     s ! null
-    andThen()
-    assertEquals(vv, None)
+    waitForResult(vv, None)
     s ! "moo"
-    andThen()
-    assertEquals(vv, Some("moo"))
+    waitForResult(vv, Some("moo"))
   }
 
   test("Chained mapping") {
+    val received = Signal(Seq.empty[Int])
+    val capture: Int => Unit = { value => received.mutate(_ :+ value) }
+
     val s = Signal(1)
     val m = s.map(_ * 2).map(_ * 3)
     m.onCurrent(capture)
     Seq(2, 3, 1).foreach(s ! _)
-    assertEquals(received, Seq(6, 12, 18, 6))
+    waitForResult(received, Seq(6, 12, 18, 6))
   }
 
   test("No subscribers will be left behind") {
+    val received = Signal(Seq.empty[Int])
+    val capture: Int => Unit = { value => received.mutate(_ :+ value) }
+
     val s = Signal(1)
-    val f = s map (_ * 2)
+    val f = s.map (_ * 2)
     val sub = f.onCurrent(capture)
     Seq(2, 3) foreach (s ! _)
     assert(s.hasSubscribers)
@@ -73,7 +71,7 @@ class MapSignalSpec extends munit.FunSuite {
     assert(!s.hasSubscribers)
     assert(!f.hasSubscribers)
     s ! 4
-    assertEquals(received, Seq(2, 4, 6))
+    waitForResult(received, Seq(2, 4, 6))
   }
 
   test("wire and un-wire a mapped signal") {

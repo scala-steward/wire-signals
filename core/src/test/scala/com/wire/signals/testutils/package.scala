@@ -118,6 +118,4 @@ package object testutils {
     while(tasksRemaining && System.currentTimeMillis() < before) Thread.sleep(10)
     !tasksRemaining
   }
-
-  def andThen(millis: Long = 100): Unit = Thread.sleep(millis)
 }

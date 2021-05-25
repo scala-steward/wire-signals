@@ -17,7 +17,7 @@
  */
 package com.wire.signals
 
-import com.wire.signals.testutils.andThen
+import com.wire.signals.testutils.waitForResult
 
 class PartialUpdateSignalSpec extends munit.FunSuite {
 
@@ -28,9 +28,9 @@ class PartialUpdateSignalSpec extends munit.FunSuite {
 
     val original = Signal(Data(0, 0))
 
-    var updates = Seq.empty[Data]
+    val updates = Signal(Seq.empty[Data])
     original.onPartialUpdate(_.value1).onCurrent { d =>
-      updates = updates :+ d
+      updates.mutate(_ :+ d)
     }
 
     original ! Data(0, 1)
@@ -43,9 +43,7 @@ class PartialUpdateSignalSpec extends munit.FunSuite {
 
     original ! Data(2, 3)
 
-    andThen()
-
-    assertEquals(updates, Seq(Data(0, 0), Data(1, 2), Data(2, 3)))
+    waitForResult(updates, Seq(Data(0, 0), Data(1, 2), Data(2, 3)))
   }
 
   test("New subscribers get latest value even if the select doesn't match") {

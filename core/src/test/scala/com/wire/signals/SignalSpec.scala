@@ -27,13 +27,9 @@ import scala.concurrent._
 import scala.concurrent.duration._
 
 class SignalSpec extends munit.FunSuite {
-  private var received = Seq[Int]()
-  private val capture = (value: Int) => received = received :+ value
-
   private val eventContext = EventContext()
 
   override def beforeEach(context: BeforeEach): Unit = {
-    received = Seq[Int]()
     eventContext.start()
   }
 
@@ -42,10 +38,13 @@ class SignalSpec extends munit.FunSuite {
   }
 
   test("Receive initial value") {
+    val received = Signal(Seq.empty[Int])
+    val capture: Int => Unit = { value => received.mutate(_ :+ value) }
+
     val s = Signal(1)
     s.foreach(capture)
-    andThen()
-    assertEquals(received, Seq(1))
+
+    waitForResult(received, Seq(1))
   }
 
   test("Basic subscriber lifecycle") {
@@ -58,67 +57,87 @@ class SignalSpec extends munit.FunSuite {
   }
 
   test("Don't receive events after unregistering a single subscriber") {
+    val received = Signal(Seq.empty[Int])
+    val capture: Int => Unit = { value => received.mutate(_ :+ value) }
+
     val s = Signal(1)
     val sub = s.foreach(capture)
-    andThen()
+
+    waitForResult(received, Seq(1))
+
     s ! 2
-    andThen()
-    assertEquals(received, Seq(1, 2))
+
+    waitForResult(received, Seq(1, 2))
 
     sub.destroy()
     s ! 3
-    andThen()
-    assertEquals(received, Seq(1, 2))
+
+    waitForResult(received, Seq(1, 2))
+    capture(4) // to ensure '3' doesn't just come late
+    waitForResult(received, Seq(1, 2, 4))
   }
 
   test("Don't receive events after unregistering all subscribers") {
+    val received = Signal(Seq.empty[Int])
+    val capture: Int => Unit = { value => received.mutate(_ :+ value) }
+
     val s = Signal(1)
     s.foreach(capture)
-    andThen()
+
+    waitForResult(received, Seq(1))
+
     s ! 2
-    andThen()
-    assertEquals(received, Seq(1, 2))
+    waitForResult(received, Seq(1, 2))
 
     s.unsubscribeAll()
     s ! 3
-    andThen()
-    assertEquals(received, Seq(1, 2))
+
+    waitForResult(received, Seq(1, 2))
+    capture(4) // to ensure '3' doesn't just come late
+    waitForResult(received, Seq(1, 2, 4))
   }
 
   test("Signal mutation") {
+    val received = Signal(Seq.empty[Int])
+    val capture: Int => Unit = { value => received.mutate(_ :+ value) }
+
     val s = Signal(42)
     s.foreach(capture)
-    andThen()
-    assertEquals(received, Seq(42))
+    waitForResult(received, Seq(42))
     s.mutate(_ + 1)
-    andThen()
-    assertEquals(received, Seq(42, 43))
+    waitForResult(received, Seq(42, 43))
     s.mutate(_ - 1)
-    andThen()
-    assertEquals(received, Seq(42, 43, 42))
+    waitForResult(received, Seq(42, 43, 42))
   }
 
   test("Don't send the same value twice") {
+    val received = Signal(Seq.empty[Int])
+    val capture: Int => Unit = { value => received.mutate(_ :+ value) }
+
     val s = Signal(1)
     s.foreach(capture)
     Seq(1, 2, 2, 1).foreach { n =>
       s ! n
-      andThen()
+      waitForResult(s, n)
     }
-    assertEquals(received, Seq(1, 2, 1))
+    waitForResult(received, Seq(1, 2, 1))
   }
 
   test("Idempotent signal mutation") {
+    val received = Signal(Seq.empty[Int])
+    val capture: Int => Unit = { value => received.mutate(_ :+ value) }
+
     val s = Signal(42)
     s.foreach(capture)
-    andThen()
-    assertEquals(received, Seq(42))
+    waitForResult(received, Seq(42))
     s.mutate(_ + 1 - 1)
-    andThen()
-    assertEquals(received, Seq(42))
+    waitForResult(received, Seq(42))
   }
 
   test("Simple for comprehension") {
+    val received = Signal(Seq.empty[Int])
+    val capture: Int => Unit = { value => received.mutate(_ :+ value) }
+
     val s = Signal(0)
     val s1 = Signal.const(1)
     val s2 = Signal.const(2)
@@ -127,11 +146,8 @@ class SignalSpec extends munit.FunSuite {
       y <- Seq(s1, s2)(x)
     } yield y * 2
     r.foreach(capture)
-    assertEquals(r.currentValue.get, 2)
     s ! 1
-    andThen()
-    assertEquals(r.currentValue.get, 4)
-    assertEquals(received, Seq(2, 4))
+    waitForResult(received, Seq(2, 4))
   }
 
   test("Many concurrent subscriber changes") {

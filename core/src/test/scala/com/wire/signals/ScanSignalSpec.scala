@@ -17,30 +17,24 @@
  */
 package com.wire.signals
 
-import com.wire.signals.testutils.{andThen, result}
+import com.wire.signals.testutils.{result, waitForResult}
 
 class ScanSignalSpec extends munit.FunSuite {
-  private var received = Seq[Int]()
-  private val capture = (value: Int) => received = received :+ value
-
-  override def beforeEach(context: BeforeEach): Unit = {
-    received = Seq.empty[Int]
-  }
-
   test("Normal scanning") {
+    val received = Signal(Seq.empty[Int])
+    val capture: Int => Unit = { value => received.mutate(_ :+ value) }
+
     val s = Signal(1)
     val scanned = s.scan(0)(_ + _)
     assertEquals(result(scanned.future), 1)
 
     scanned.onCurrent(capture)
     assertEquals(result(scanned.future), 1)
-    assertEquals(received, Seq(1))
+    waitForResult(received, Seq(1))
 
     Seq(2, 3, 1).foreach(s ! _)
 
-    andThen()
-
-    assertEquals(received, Seq(1, 3, 6, 7))
+    waitForResult(received, Seq(1, 3, 6, 7))
     assertEquals(result(scanned.future), 7)
   }
 
@@ -49,27 +43,31 @@ class ScanSignalSpec extends munit.FunSuite {
     val scanned = s.scan(0)(_ + _)
     assertEquals(result(scanned.future), 1)
 
-    andThen()
-
     Seq(2, 3, 1).foreach(s ! _)
+    waitForResult(s, 1)
     assertEquals(result(scanned.future), 7)
   }
 
   test("Chained scanning") {
+    val received = Signal(Seq.empty[Int])
+    val capture: Int => Unit = { value => received.mutate(_ :+ value) }
+
     val s = Signal(1)
     val scanned = s.scan(0)(_ + _).scan(1)(_ * _)
     assertEquals(result(scanned.future), 1)
 
     scanned.onCurrent(capture)
     Seq(2, 3, 1).foreach(s ! _)
-
-    andThen()
+    waitForResult(s, 1)
 
     assertEquals(result(scanned.future), 3 * 6 *7)
-    assertEquals(received, Seq(1, 3, 3 * 6, 3 * 6 * 7))
+    waitForResult(received, Seq(1, 3, 3 * 6, 3 * 6 * 7))
   }
 
   test("No subscribers will be left behind") {
+    val received = Signal(Seq.empty[Int])
+    val capture: Int => Unit = { value => received.mutate(_ :+ value) }
+
     val s = Signal(1)
     val scanned = s.scan(0)(_ + _)
     val sub = scanned.onCurrent(capture)
@@ -80,6 +78,6 @@ class ScanSignalSpec extends munit.FunSuite {
     assert(!s.hasSubscribers)
     assert(!scanned.hasSubscribers)
     s ! 4
-    assertEquals(received, Seq(1, 3, 6))
+    waitForResult(received, Seq(1, 3, 6))
   }
 }
