@@ -53,7 +53,7 @@ object EventStream {
     * @tparam E The event type.
     * @return A new event stream of events of the type `E`.
     */
-  def apply[E]() = new SourceStream[E]
+  @inline def apply[E]() = new SourceStream[E]
 
   /** Creates a new event stream by joining together the original streams of the same type of events, `E`.
     * The resulting stream will emit all events published to any of the original streams.
@@ -62,7 +62,7 @@ object EventStream {
     * @tparam E The event type.
     * @return A new event stream of events of type `E`.
     */
-  def zip[E](streams: EventStream[E]*): EventStream[E] = new ZipEventStream(streams: _*)
+  @inline def zip[E](streams: EventStream[E]*): EventStream[E] = new ZipEventStream(streams: _*)
 
   /** Creates a new event source from a signal of the same type of events.
     * The event source will publish a new event every time the value of the signal changes or its set of subscribers changes.
@@ -70,54 +70,41 @@ object EventStream {
     * @see [[Signal]]
     * @see [[Signal.onChanged]]
     *
-    * @todo The difference between `EventStream.from(signal)` and `signal.onChanged` seems to be only that in the first case
-    *       the new event stream will emit an event also when the set of subscribers of the original signal changes, not only
-    *       when its value changes to something different. This might be misleading and I don't really see any practical use
-    *       of such distinction. Maybe we should remove this method?
-    *
     * @param signal The original signal.
     * @tparam E The type of events.
     * @return A new event stream, emitting an event corresponding to the value of the original signal.
     */
-  def from[E](signal: Signal[E]): EventStream[E] with SignalSubscriber = new EventStream[E] with SignalSubscriber { stream =>
-    override def changed(ec: Option[ExecutionContext]): Unit = stream.synchronized { signal.value.foreach(dispatch(_, ec)) }
-
-    override protected def onWire(): Unit = {
-      signal.subscribe(this)
-      signal.value.foreach(dispatch(_, None))
-    }
-    override protected def onUnwire(): Unit = signal.unsubscribe(this)
-  }
+  @inline def from[E](signal: Signal[E]): EventStream[E] = signal.onChanged
 
   /** Creates an event stream from a future. The event stream will emit one event if the future finishes with success, zero otherwise.
     *
-    * @param future The [[scala.concurrent.Future]] treated as the source of the only event that can be emitted by the event source.
-    * @param executionContext The [[scala.concurrent.ExecutionContext]] in which the event will be dispatched.
+    * @param future The `Future` treated as the source of the only event that can be emitted by the event source.
+    * @param executionContext The `ExecutionContext` in which the event will be dispatched.
     * @tparam E The type of the event.
     * @return A new event stream.
     */
-  def from[E](future: Future[E], executionContext: ExecutionContext): EventStream[E] = returning(new EventStream[E]) { stream =>
-    future.foreach {
-      stream.dispatch(_, Some(executionContext))
-    }(executionContext)
-  }
+  @inline def from[E](future: Future[E], executionContext: ExecutionContext): EventStream[E] =
+    returning(new EventStream[E]) { stream =>
+      future.foreach { stream.dispatch(_, Some(executionContext)) }(executionContext)
+    }
 
   /** A shorthand for creating an event stream from a future in the default execution context.
     *
     * @see [[Threading]]
     *
-    * @param future The [[scala.concurrent.Future]] treated as the source of the only event that can be emitted by the event source.
+    * @param future The `Future` treated as the source of the only event that can be emitted by the event source.
     * @tparam E The type of the event.
     * @return A new event stream.
     */
-  def from[E](future: Future[E]): EventStream[E] = from(future, Threading.defaultContext)
+  @inline def from[E](future: Future[E]): EventStream[E] = from(future, Threading.defaultContext)
 
   /** A shorthand for creating an event stream from a cancellable future. */
-  def from[E](future: CancellableFuture[E], executionContext: ExecutionContext): EventStream[E] = from(future.future, executionContext)
+  @inline def from[E](future: CancellableFuture[E], executionContext: ExecutionContext): EventStream[E] =
+    from(future.future, executionContext)
 
 
   /** A shorthand for creating an event stream from a cancellable future in the default execution context. */
-  def from[E](future: CancellableFuture[E]): EventStream[E] = from(future.future)
+  @inline def from[E](future: CancellableFuture[E]): EventStream[E] = from(future.future)
 }
 
 /** An event stream of type `E` dispatches events (of type `E`) to all functions of type `(E) => Unit` which were registered in
@@ -131,7 +118,7 @@ object EventStream {
   * receive an event in one execution context, but the function which consumes it is registered with another execution context
   * specified. In that case the function won't be called immediately, but in a future executed in that execution context.
   *
-  * @see [[scala.concurrent.ExecutionContext]]
+  * @see `ExecutionContext`
   */
 class EventStream[E] protected () extends EventSource[E, EventSubscriber[E]] {
 

@@ -45,7 +45,7 @@ abstract class EventSource[E, S] {
     */
   def onCurrent(body: E => Unit)(implicit eventContext: EventContext = EventContext.Global): Subscription
 
-  /** An alias for the `on` method with the default [[scala.concurrent.ExecutionContext]]. */
+  /** An alias for the `on` method with the default [[ExecutionContext]]. */
   @inline final def foreach(body: E => Unit)
                            (implicit executionContext: ExecutionContext = Threading.defaultContext,
                             eventContext: EventContext = EventContext.Global): Subscription =

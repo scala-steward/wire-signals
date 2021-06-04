@@ -54,22 +54,68 @@ object UiDispatchQueue {
   private var _ui: DispatchQueue = Empty
 
   object Implicit {
+    /** Import this into a block of code if you want to use the Ui dispatch queue as the implicit argument in subscriptions.
+      * ```
+      * import UiDispatchQueue.Implicit.Ui
+      * ```
+      *
+      * @return the Ui dispatch queue
+      */
     implicit def Ui: DispatchQueue = _ui
   }
 
+  /** The current Ui dispatch queue. This is a method, not a value, because in theory it's possible to replace an UI dispatch queue
+    * to another while the program is running. In practice, you will usually start the program without the UI initialized, and
+    * only later call `UiDispatchQueue.setUi` to do it, but you probably won't change it again.
+    *
+    * @return the Ui dispatch queue
+    */
   def Ui: DispatchQueue = _ui
 
+  /** Sets the dispatch queue for the UI. In practice, you will usually start the program without the Ui initialized, and
+    * only later call `UiDispatchQueue.setUi` to do it, but you probably won't change it again.
+    *
+    * @param ui The dispatch queue for the UI
+    */
   def setUi(ui: DispatchQueue): Unit = this._ui = ui
 
-  def setUi(runUiWith: Runnable => Unit): Unit = this._ui = new UiDispatchQueue(runUiWith)
+  /** Sets the `Runnable` that will be run by an instance of `UiDispatchQueue` which will be the UI dispatch queue from now on.
+    * In practice, you will usually start the program without the Ui initialized, and
+    * only later call `UiDispatchQueue.setUi` to do it, but you probably won't change it again.
+    * @see the examples in the overview of `UiDispatchQueue`
+    *
+    * @param runUiWith a `Runnable` run by the UI dispatch queue
+    */
+  def setUi(runUiWith: Runnable => Unit): Unit =
+    this._ui = new UiDispatchQueue(runUiWith)
 
-  def clearUi(): Unit = this._ui = Empty
+  /** Resets the UI dispatch queue to an empty one. An empty UI dispatch queue ignores all tasks run on it.
+    * You probably shouldn't need to use this method.
+    */
+  def clearUi(): Unit =
+    this._ui = Empty
 
   implicit final class RichSignal[V](val signal: Signal[V]) extends AnyVal {
+    /** An extension method to the `Signal` class. You can use `signal.onUi { value => ... }` instead of
+      * `signal.foreach { value => ... }` to enforce the subscription to be run on the UI dispatch queue when
+      * the default dispatch queue in the given code block is different.
+      *
+      * @param subscriber A subscriber function which consumes the value.
+      * @param context The event context the subscription is assigned to.
+      * @return A new `Subscription` to the signal.
+      */
     def onUi(subscriber: V => Unit)(implicit context: EventContext = EventContext.Global): Subscription =
       signal.on(_ui)(subscriber)(context)
   }
 
+  /** An extension method to the `EventStream` class. You can use `eventStream.onUi { event => ... }` instead of
+    * `eventStream.foreach { event => ... }` to enforce the subscription to be run on the UI dispatch queue when
+    * the default dispatch queue in the given code block is different.
+    *
+    * @param subscriber A subscriber function which consumes the event.
+    * @param context The event context the subscription is assigned to.
+    * @return A new `Subscription` to the signal.
+    */
   implicit final class RichEventStream[E](val stream: EventStream[E]) extends AnyVal {
     def onUi(subscriber: E => Unit)(implicit context: EventContext = EventContext.Global): Subscription =
       stream.on(_ui)(subscriber)(context)

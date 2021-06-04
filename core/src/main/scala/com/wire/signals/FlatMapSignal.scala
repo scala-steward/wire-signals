@@ -21,7 +21,7 @@ final private[signals] class FlatMapSignal[A, B](source: Signal[A], f: A => Sign
   private var mapped: Signal[B] = Signal.empty[B]
 
   private val subscriber = new SignalSubscriber {
-    /** @todo Is this synchronization needed, is it enough? What if we just got unwired ? */
+    /** @todo Is this synchronization needed? Or, otoh, is it enough? What if we just got unwired ? */
     override def changed(currentContext: Option[ExecutionContext]): Unit = {
       val changed = wiringMonitor.synchronized {
         val next = source.value

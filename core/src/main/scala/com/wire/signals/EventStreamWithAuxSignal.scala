@@ -46,8 +46,6 @@ object EventStreamWithAuxSignal {
   * and it will receive a tuple of the event and the current value of `aux`: `Some[Int]` if something was already published
   * in the signal, or `None` if it is not initialized yet.
   *
-  * @todo Consider moving this class to the extensions project.
-  *
   * @param source The source event stream used to trigger events in this event stream. Every event of type `A` published in `source`
   *               will become the first part of the tuple published in this stream.
   * @param aux An auxiliary signal of values of the type `B`. Every time a new event is published in `source`, this stream will

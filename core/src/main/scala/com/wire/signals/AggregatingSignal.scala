@@ -49,7 +49,7 @@ object AggregatingSignal {
 
 /** A signal which initializes its value by executing the `loader` future and then updates the value by composition of
   * the previous value and an event published in the associated `source` stream.
-  * You may think of it as a more performance-efficient version of [[RefreshingSignal]], useful when the `loader`
+  * You may think of it as a more performance-efficient version of `RefreshingSignal`, useful when the `loader`
   * requires heavy computations but an update between one value and another is simple in comparison. For example:
   * ```
   * val loader: Future[ Vector[DBEntry] ] = fetchDBTableData()

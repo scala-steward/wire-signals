@@ -8,18 +8,27 @@ import com.wire.signals.DispatchQueue.{Serial, nextInt}
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
 
-/** A thin wrapper over Scala's [[scala.concurrent.ExecutionContext]] allowing us to differentiate between the default
-  * execution context which tries to run asynchronously as many tasks as possible, and limited execution contexts,
-  * allowed to run only up to a given number of tasks at once.
+/** A thin wrapper over Scala's `ExecutionContext` allowing us to differentiate between the default execution context
+  * which tries to run asynchronously as many tasks as possible, and limited execution contexts, allowed to run only up
+  * to a given number of tasks at once.
   *
-  * @see [[ExecutionContext]]
+  * @see `ExecutionContext`
   */
 trait DispatchQueue extends ExecutionContext {
   val name: String = s"queue_${nextInt()}"
 
   /** Executes a task on this queue.
-    *
-    * @param task - operation to perform on this queue.
+    * You can use this to execute a piece of code on another dispatch queue than the one default to the parent code block, i.e.
+    * ```
+    * ... // running on Threading.defaultContext
+    * UiDispatchQueue.Ui {
+    *   ... // this will run on the UI thread
+    * }
+    * ...
+    * ```
+    * @param task an operation to perform on this queue.
+    * @tparam A the type of the task result
+    * @return a cancellable future which will finish with the result of the task
     */
   def apply[A](task: => A): CancellableFuture[A] = CancellableFuture(task)(this)
 

@@ -233,20 +233,21 @@ object Signal {
     * @tparam V The type of the value produced by the future.
     * @return A new signal which will hold the value produced by the future.
     */
-  def from[V](future: Future[V], executionContext: ExecutionContext): Signal[V] = returning(new Signal[V]) { signal =>
-    future.foreach {
-      res => signal.set(Option(res), Some(executionContext))
-    }(executionContext)
-  }
+  @inline def from[V](future: Future[V], executionContext: ExecutionContext): Signal[V] =
+    returning(new Signal[V]) { signal =>
+      future.foreach {
+        res => signal.set(Option(res), Some(executionContext))
+      }(executionContext)
+    }
 
   /** A version of `from` using the default execution context as its second argument. */
-  def from[V](future: Future[V]): Signal[V] = from(future, Threading.defaultContext)
+  @inline def from[V](future: Future[V]): Signal[V] = from(future, Threading.defaultContext)
 
   /** A version of `from` creating a signal from a cancellable future. */
-  def from[V](future: CancellableFuture[V], executionContext: ExecutionContext): Signal[V] = from(future.future, executionContext)
+  @inline def from[V](future: CancellableFuture[V], executionContext: ExecutionContext): Signal[V] = from(future.future, executionContext)
 
   /** A version of `from` creating a signal from a cancellable future, and using the default execution context. */
-  def from[V](future: CancellableFuture[V]): Signal[V] = from(future.future, Threading.defaultContext)
+  @inline def from[V](future: CancellableFuture[V]): Signal[V] = from(future.future, Threading.defaultContext)
 
   /** Creates a new signal from an event stream and an initial value.
     * The signal will be initialized to the initial value on its creation, and subscribe to the event stream.
@@ -257,7 +258,7 @@ object Signal {
     * @tparam V The type of both the initial value and the events in the parent stream.
     * @return A new signal with the value of the type `V`.
     */
-  def from[V](initial: V, source: EventStream[V]): Signal[V] = new EventStreamSignal[V](source, Option(initial))
+  @inline def from[V](initial: V, source: EventStream[V]): Signal[V] = new EventStreamSignal[V](source, Option(initial))
 
   /** Creates a new signal from an event stream.
     * The signal will start uninitialized and subscribe to the parent event stream. Subsequently, it will update its value
@@ -267,7 +268,7 @@ object Signal {
     * @tparam V The type of the events in the parent stream.
     * @return A new signal with the value of the type `V`.
     */
-  def from[V](source: EventStream[V]): Signal[V] = new EventStreamSignal[V](source)
+  @inline def from[V](source: EventStream[V]): Signal[V] = new EventStreamSignal[V](source)
 }
 
 /** A signal is an event stream with a cache.
@@ -621,7 +622,7 @@ class Signal[V] protected (@volatile protected[signals] var value: Option[V] = N
     * ```
     * val parent = Signal[Int](3)
     * val oddEvenSwitch = parent.onPartialUpdate { _ % 2 == 0 }
-    * oddEvenSwitch.foreach { n => println(s"The value switched between odd and even and is now equal to $n") }
+    * oddEvenSwitch.foreach { _ => println(s"The value switched between odd and even") }
     * ```
     * Here, the value of `oddEvenSwitch` will update only if the new value is even if the old one was odd and vice versa.
     * So, if we publish new odd values to `parent` (1, 5, 9, 7, ...) the value of `oddEvenSwitch` will stay at 3. Only
