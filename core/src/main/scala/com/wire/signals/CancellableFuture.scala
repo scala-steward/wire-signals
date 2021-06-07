@@ -42,7 +42,7 @@ object CancellableFuture {
   /** When the cancellable future is cancelled, `CancelException` is provided as the reason
     * of failure of the underlying future.
     */
-  final case object CancelException extends Exception("Operation cancelled") with NoStackTrace
+  case object CancelException extends Exception("Operation cancelled") with NoStackTrace
 
   private final class PromiseCompletingRunnable[T](body: => T) extends Runnable {
     val promise: Promise[T] = Promise[T]()

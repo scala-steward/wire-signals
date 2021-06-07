@@ -32,7 +32,7 @@ object EventContext {
     * It does not maintain its subscriptions, it's always started, it can't be stopped or destroyed,
     * and it lives for the lifetime of the program.
     */
-  final object Global extends EventContext {
+  object Global extends EventContext {
     override def register(subscription: Subscription): Boolean = true
     override def unregister(subscription: Subscription): Unit = {}
     override def start(): Unit = {}

@@ -80,7 +80,7 @@ lazy val root = (project in file("."))
     crossScalaVersions := supportedScalaVersions,
     libraryDependencies ++= Seq(
       //Test dependencies
-      "org.scalameta" %% "munit" % "0.7.21" % Test
+      "org.scalameta" % "munit_2.13" % "0.7.26" % "test"
     ),
     scalacOptions ++= standardOptions ++ {
       CrossVersion.partialVersion(scalaVersion.value) match {
