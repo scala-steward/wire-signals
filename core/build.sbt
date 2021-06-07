@@ -51,7 +51,9 @@ val scala213Options = Seq(
   "-Xsource:3"
 )
 
-val scala3Options = Seq()
+val scala3Options = Seq(
+  "-source:3.0-migration"
+)
 
 publishMavenStyle := true
 Test / publishArtifact := false
