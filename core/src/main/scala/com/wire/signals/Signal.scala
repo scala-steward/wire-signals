@@ -62,7 +62,7 @@ object Signal {
     * @tparam V The type of the values which can be published to the signal.
     * @return A new signal of values of the type `V`.
     */
-  def apply[V](): SourceSignal[V] = new SourceSignal[V] with NoAutowiring
+  def apply[V](): SourceSignal[V] = new SourceSignal[V]
 
   /** Creates a new [[SourceSignal]] of values of the type `V`. A usual entry point for the signals network.
     * Starts initialized to the given value.
@@ -71,7 +71,7 @@ object Signal {
     * @tparam V The type of the values which can be published to the signal.
     * @return A new signal of values of the type `V`.
     */
-  def apply[V](v: V): SourceSignal[V] = new SourceSignal[V](Some(v)) with NoAutowiring
+  def apply[V](v: V): SourceSignal[V] = new SourceSignal[V](Some(v))
 
   /** Returns an empty, uninitialized, immutable signal of the given type.
     * Empty signals can be used in flatMap chains to signalize (ha!) that for the given value of the parent signal all further
@@ -513,7 +513,7 @@ class Signal[V] protected (@volatile protected[signals] var value: Option[V] = N
     */
   final def collect[Z](pf: PartialFunction[V, Z]): Signal[Z] = new ProxySignal[Z](this) {
     override protected def computeValue(current: Option[Z]): Option[Z] = self.value.flatMap { v =>
-      pf.andThen(Option(_)).applyOrElse(v, { _: V => Option.empty[Z] })
+      pf.andThen(Option(_)).applyOrElse(v, { (_: V) => Option.empty[Z] })
     }
   }
 
@@ -700,7 +700,7 @@ class Signal[V] protected (@volatile protected[signals] var value: Option[V] = N
   *
   * @see [[EventSource]]
   */
-trait NoAutowiring { self: Signal[_] =>
+trait NoAutowiring[V] { self: Signal[V] =>
   disableAutowiring()
 }
 

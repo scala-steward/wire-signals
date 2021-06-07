@@ -1,6 +1,7 @@
 package com.wire.signals
 
 import scala.concurrent.Future
+import scala.collection.immutable.Map
 
 /** A utility object for serializing futures.
   *
@@ -35,7 +36,7 @@ object Serialized {
       CancellableFuture.lift(lock.recover { case _ => }).flatMap(_ => body)
     }
     val lock = future.future
-    locks += (key -> lock)
+    locks += ((key, lock))
     future.onComplete { _ => if (locks.get(key).contains(lock)) locks -= key }
     future
   }.flatten
@@ -54,7 +55,7 @@ object Serialized {
     val future = locks.get(key).fold(body) { lock =>
       lock.recover { case _ => }.flatMap(_ => body)
     }
-    locks += (key -> future)
+    locks += ((key, future))
     future.onComplete { _ => if (locks.get(key).contains(future)) locks -= key }
     future
   }

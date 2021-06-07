@@ -1,9 +1,10 @@
 // based on http://caryrobbins.com/dev/sbt-publishing/
 
-lazy val scala213 = "2.13.6"
-lazy val scala212 = "2.12.12"
+lazy val scala213 = "2.13.5"
+lazy val scala212 = "2.12.14"
 lazy val scala211 = "2.11.12"
-lazy val supportedScalaVersions = List(scala213, scala212, scala211)
+lazy val scala3   = "3.0.0"
+lazy val supportedScalaVersions = List(scala213, scala212, scala211, scala3)
 
 organization := "com.wire"
 name := "wire-signals"
@@ -50,6 +51,10 @@ val scala213Options = Seq(
   "-Xsource:3"
 )
 
+val scala3Options = Seq(
+  "-source:3.0-migration"
+)
+
 publishMavenStyle := true
 Test / publishArtifact := false
 pomIncludeRepository := { _ => false }
@@ -87,15 +92,17 @@ publishM2Configuration    := publishM2Configuration.value.withOverwrite(true)
 lazy val root = (project in file("."))
   .settings(
     name := "wire-signals",
+    semanticdbEnabled := true,
     crossScalaVersions := supportedScalaVersions,
     libraryDependencies ++= Seq(
       //Test dependencies
-      "org.scalameta" %% "munit" % "0.7.21" % Test
+      "org.scalameta" % "munit_2.13" % "0.7.26" % "test"
     ),
     scalacOptions ++= standardOptions ++ {
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, 11)) => scala211Options
         case Some((2, 12)) => scala212Options
+        case Some((3, _))  => scala3Options
         case _             => scala213Options
       }
     }

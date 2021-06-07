@@ -10,7 +10,7 @@ import scala.concurrent.ExecutionContext
   *
   * @tparam V the type of the value held by the signal.
   */
-class SourceSignal[V](v: Option[V] = None) extends Signal[V](v) {
+class SourceSignal[V](v: Option[V] = None) extends Signal[V](v) with NoAutowiring[V] {
   /** Changes the value of the signal.
     *
     * The original `publish` method of the [[Signal]] class is `protected` to ensure that intermediate signals - those created
