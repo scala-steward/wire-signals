@@ -594,8 +594,8 @@ abstract class CancellableFuture[+T](implicit ec: ExecutionContext = Threading.d
   /** Same as `Future.ready`.
     *'''''This method should not be called directly; use `Await.ready` instead.'''''
     */
-  @throws[InterruptedException](classOf[InterruptedException])
-  @throws[TimeoutException](classOf[TimeoutException])
+  @throws[InterruptedException]
+  @throws[TimeoutException]
   override final def ready(atMost: Duration)(implicit permit: CanAwait): this.type = {
     future.ready(atMost)
     this
@@ -604,7 +604,7 @@ abstract class CancellableFuture[+T](implicit ec: ExecutionContext = Threading.d
   /** Same as `Future.result`.
     * '''''This method should not be called directly; use `Await.result` instead.'''''
     */
-  @throws[Exception](classOf[Exception])
+  @throws[Exception]
   override final def result(atMost: Duration)(implicit permit: CanAwait): T = future.result(atMost)
 
   /** Registers the cancellable future in the given event context. When the event context is stopped, the future

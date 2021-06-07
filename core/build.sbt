@@ -1,9 +1,10 @@
 // based on http://caryrobbins.com/dev/sbt-publishing/
 
 lazy val scala213 = "2.13.5"
-lazy val scala212 = "2.12.12"
+lazy val scala212 = "2.12.14"
 lazy val scala211 = "2.11.12"
-lazy val supportedScalaVersions = List(scala213, scala212, scala211)
+lazy val scala3   = "3.0.0"
+lazy val supportedScalaVersions = List(scala213, scala212, scala211, scala3)
 
 organization := "com.wire"
 name := "wire-signals"
@@ -35,9 +36,22 @@ val scala212Options = Seq(
 )
 
 val scala213Options = Seq(
+  "-opt:unreachable-code",
+  "-opt:simplify-jumps",
+  "-opt:compact-locals",
+  "-opt:copy-propagation",
+  "-opt:redundant-casts",
+  "-opt:box-unbox",
+  "-opt:nullness-tracking",
+  "-opt:closure-invocations",
+  "-opt:allow-skip-core-module-init",
+  "-opt:assume-modules-non-null",
+  "-opt:allow-skip-class-loading",
   "-opt:inline",
   "-Xsource:3"
 )
+
+val scala3Options = Seq()
 
 publishMavenStyle := true
 Test / publishArtifact := false
@@ -86,6 +100,7 @@ lazy val root = (project in file("."))
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, 11)) => scala211Options
         case Some((2, 12)) => scala212Options
+        case Some((3, _))  => scala3Options
         case _             => scala213Options
       }
     }

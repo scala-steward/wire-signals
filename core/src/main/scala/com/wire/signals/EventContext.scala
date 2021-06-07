@@ -17,6 +17,8 @@
  */
 package com.wire.signals
 
+import scala.collection.immutable.Set
+
 object EventContext {
   /** Creates a new default implementation of an [[EventContext]]
     *
