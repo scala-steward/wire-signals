@@ -62,7 +62,7 @@ object Signal {
     * @tparam V The type of the values which can be published to the signal.
     * @return A new signal of values of the type `V`.
     */
-  def apply[V](): SourceSignal[V] = new SourceSignal[V] with NoAutowiring[V]
+  def apply[V](): SourceSignal[V] = new SourceSignal[V]
 
   /** Creates a new [[SourceSignal]] of values of the type `V`. A usual entry point for the signals network.
     * Starts initialized to the given value.
@@ -71,7 +71,7 @@ object Signal {
     * @tparam V The type of the values which can be published to the signal.
     * @return A new signal of values of the type `V`.
     */
-  def apply[V](v: V): SourceSignal[V] = new SourceSignal[V](Some(v)) with NoAutowiring[V]
+  def apply[V](v: V): SourceSignal[V] = new SourceSignal[V](Some(v))
 
   /** Returns an empty, uninitialized, immutable signal of the given type.
     * Empty signals can be used in flatMap chains to signalize (ha!) that for the given value of the parent signal all further
