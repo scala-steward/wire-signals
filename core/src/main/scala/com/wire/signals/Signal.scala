@@ -513,7 +513,7 @@ class Signal[V] protected (@volatile protected[signals] var value: Option[V] = N
     */
   final def collect[Z](pf: PartialFunction[V, Z]): Signal[Z] = new ProxySignal[Z](this) {
     override protected def computeValue(current: Option[Z]): Option[Z] = self.value.flatMap { v =>
-      pf.andThen(Option(_)).applyOrElse(v, { _: V => Option.empty[Z] })
+      pf.andThen(Option(_)).applyOrElse(v, { (_: V) => Option.empty[Z] })
     }
   }
 

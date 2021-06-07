@@ -1,6 +1,6 @@
 // based on http://caryrobbins.com/dev/sbt-publishing/
 
-lazy val scala213 = "2.13.6"
+lazy val scala213 = "2.13.5"
 lazy val scala212 = "2.12.12"
 lazy val scala211 = "2.11.12"
 lazy val supportedScalaVersions = List(scala213, scala212, scala211)
@@ -35,17 +35,6 @@ val scala212Options = Seq(
 )
 
 val scala213Options = Seq(
-  "-opt:unreachable-code",
-  "-opt:simplify-jumps",
-  "-opt:compact-locals",
-  "-opt:copy-propagation",
-  "-opt:redundant-casts",
-  "-opt:box-unbox",
-  "-opt:nullness-tracking",
-  "-opt:closure-invocations",
-  "-opt:allow-skip-core-module-init",
-  "-opt:assume-modules-non-null",
-  "-opt:allow-skip-class-loading",
   "-opt:inline",
   "-Xsource:3"
 )
@@ -87,6 +76,7 @@ publishM2Configuration    := publishM2Configuration.value.withOverwrite(true)
 lazy val root = (project in file("."))
   .settings(
     name := "wire-signals",
+    semanticdbEnabled := true,
     crossScalaVersions := supportedScalaVersions,
     libraryDependencies ++= Seq(
       //Test dependencies
