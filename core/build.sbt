@@ -11,6 +11,7 @@ name := "wire-signals"
 homepage := Some(url("https://github.com/wireapp/wire-signals"))
 licenses := Seq("GPL 3.0" -> url("https://www.gnu.org/licenses/gpl-3.0.en.html"))
 ThisBuild / scalaVersion := scala213
+ThisBuild / versionScheme := Some("semver-spec")
 Test / scalaVersion := scala213
 
 val standardOptions = Seq(
