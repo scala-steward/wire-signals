@@ -1,9 +1,10 @@
 // based on http://caryrobbins.com/dev/sbt-publishing/
 
 lazy val scala213 = "2.13.5"
-lazy val scala212 = "2.12.12"
+lazy val scala212 = "2.12.14"
 lazy val scala211 = "2.11.12"
-lazy val supportedScalaVersions = List(scala213, scala212, scala211)
+lazy val scala3   = "3.0.0"
+lazy val supportedScalaVersions = List(scala213, scala212, scala211, scala3)
 
 ThisBuild / organization := "com.wire"
 ThisBuild / scalaVersion := scala213
@@ -13,7 +14,8 @@ val standardOptions = Seq(
   "-deprecation",
   "-feature",
   "-unchecked",
-  "-encoding", "utf8"
+  "-encoding",
+  "utf8"
 )
 
 val scala211Options = Seq(
@@ -43,7 +45,12 @@ val scala213Options = Seq(
   "-opt:allow-skip-core-module-init",
   "-opt:assume-modules-non-null",
   "-opt:allow-skip-class-loading",
-  "-opt:inline"
+  "-opt:inline",
+  "-Xsource:3"
+)
+
+val scala3Options = Seq(
+  "-source:3.0-migration"
 )
 
 homepage := Some(url("https://github.com/wireapp/wire-signals"))
@@ -87,15 +94,16 @@ lazy val root = (project in file("."))
     name := "wire-signals-extensions",
     crossScalaVersions := supportedScalaVersions,
     libraryDependencies ++= Seq(
-      "com.wire" %% "wire-signals" % "0.4.2" % Provided,
+      "com.wire" %% "wire-signals" % "0.5.1" % Provided,
       "org.threeten" %  "threetenbp" % "1.4.4" % Provided,
       //Test dependencies
-      "org.scalameta" %% "munit" % "0.7.21" % Test
+      "org.scalameta" % "munit_2.13" % "0.7.26" % "test"
     ),
     scalacOptions ++= standardOptions ++ {
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, 11)) => scala211Options
         case Some((2, 12)) => scala212Options
+        case Some((3, _))  => scala3Options
         case _             => scala213Options
       }
     }
@@ -103,7 +111,7 @@ lazy val root = (project in file("."))
 
 testFrameworks += new TestFramework("munit.Framework")
 
-mimaPreviousArtifacts := Set("com.wire" %% "wire-signals-extensions" % "0.4.0")
+mimaPreviousArtifacts := Set("com.wire" %% "wire-signals-extensions" % "0.4.3")
 
 exportJars := true
 Compile / packageBin / packageOptions +=

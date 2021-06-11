@@ -60,7 +60,7 @@ final class ClockSignal(val interval: FiniteDuration, val clock: Clock)
   /** Called automatically once per `interval` but can also be called manually to force the update of the clock signal's value. */
   def refresh(): Unit = if (wired) {
     publish(now(clock))
-    delay.cancel()
+    Option(delay).foreach(_.cancel()) // the order of initialization in Scala might cause `delay` to be null when `refresh()` is called for the first time
     delay = CancellableFuture.delayed(interval)(refresh())
   }
 

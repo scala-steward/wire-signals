@@ -18,7 +18,8 @@ val standardOptions = Seq(
   "-deprecation",
   "-feature",
   "-unchecked",
-  "-encoding", "utf8"
+  "-encoding",
+  "utf8"
 )
 
 val scala211Options = Seq(
