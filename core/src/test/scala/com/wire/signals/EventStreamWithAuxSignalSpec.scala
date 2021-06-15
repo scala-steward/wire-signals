@@ -18,7 +18,7 @@
 package com.wire.signals
 
 class EventStreamWithAuxSignalSpec extends munit.FunSuite {
-  private lazy val aux = new SourceSignal[Int]
+  private lazy val aux = new SourceSignal[Int](None)
   private lazy val e = new SourceStream[String]()
   private lazy val r = new EventStreamWithAuxSignal(e, aux)
 

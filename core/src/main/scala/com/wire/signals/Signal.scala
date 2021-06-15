@@ -62,7 +62,7 @@ object Signal {
     * @tparam V The type of the values which can be published to the signal.
     * @return A new signal of values of the type `V`.
     */
-  def apply[V](): SourceSignal[V] = new SourceSignal[V]
+  def apply[V](): SourceSignal[V] = new SourceSignal[V](None)
 
   /** Creates a new [[SourceSignal]] of values of the type `V`. A usual entry point for the signals network.
     * Starts initialized to the given value.

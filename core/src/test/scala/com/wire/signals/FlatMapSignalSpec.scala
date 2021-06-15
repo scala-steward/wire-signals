@@ -164,7 +164,7 @@ class FlatMapSignalSpec extends munit.FunSuite {
     val s2 = Signal[Int]()
     val s = s1.flatMap { _ => s2 }
 
-    assert(s1.wired)
+    assert(!s1.wired)
     assert(!s.wired)
     val o = s.foreach { _ => () }
 
@@ -172,7 +172,7 @@ class FlatMapSignalSpec extends munit.FunSuite {
     assert(s.wired)
 
     o.disable()
-    assert(s1.wired)  // the source signal stays wired - its autowiring is disabled
+    assert(!s1.wired)
     assert(!s.wired)
   }
 
@@ -200,7 +200,7 @@ class FlatMapSignalSpec extends munit.FunSuite {
     assert(s2.wired)
 
     o.destroy()
-    assert(s.wired)
+    assert(!s.wired)
     assert(!s1.wired)
     assert(!s2.wired)
   }

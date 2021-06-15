@@ -2,6 +2,27 @@ package com.wire.signals
 
 import scala.concurrent.ExecutionContext
 
+object SourceSignal {
+  /** Creates a source signal initially holding the given value.
+    *
+    * @see also `Signal.apply`
+    *
+    * @param v The value of the signal
+    * @tparam V The type of the value
+    * @return A new source signal with the given value
+    */
+  def apply[V](v: V): SourceSignal[V] = new SourceSignal(Option(v))
+
+  /** Creates an initially empty source signal.
+    *
+    * @see also `Signal.apply`
+    *
+    * @tparam V The type of the value
+    * @return A new source signal
+    */
+  def apply[V](): SourceSignal[V] = new SourceSignal[V](None)
+}
+
 /** The usual entry point for publishing values in signals.
   *
   * Create a new signal either using the default constructor or the `Signal.apply[V]()` method. The source signal exposes
@@ -10,7 +31,7 @@ import scala.concurrent.ExecutionContext
   *
   * @tparam V the type of the value held by the signal.
   */
-class SourceSignal[V](v: Option[V] = None) extends Signal[V](v) with NoAutowiring[V] {
+class SourceSignal[V](protected val v: Option[V]) extends Signal[V](v) {
   /** Changes the value of the signal.
     *
     * The original `publish` method of the [[Signal]] class is `protected` to ensure that intermediate signals - those created
