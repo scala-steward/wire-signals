@@ -8,6 +8,7 @@ lazy val supportedScalaVersions = List(scala213, scala212, scala211, scala3)
 
 ThisBuild / organization := "com.wire"
 ThisBuild / scalaVersion := scala213
+ThisBuild / versionScheme := Some("semver-spec")
 Test / scalaVersion := scala213
 
 val standardOptions = Seq(
@@ -94,7 +95,7 @@ lazy val root = (project in file("."))
     name := "wire-signals-extensions",
     crossScalaVersions := supportedScalaVersions,
     libraryDependencies ++= Seq(
-      "com.wire" %% "wire-signals" % "0.5.1" % Provided,
+      "com.wire" %% "wire-signals" % "0.5.2" % Provided,
       "org.threeten" %  "threetenbp" % "1.4.4" % Provided,
       //Test dependencies
       "org.scalameta" % "munit_2.13" % "0.7.26" % "test"
