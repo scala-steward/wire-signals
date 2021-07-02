@@ -3,7 +3,7 @@
 lazy val scala213 = "2.13.5"
 lazy val scala212 = "2.12.14"
 lazy val scala211 = "2.11.12"
-lazy val scala3   = "3.0.0"
+lazy val scala3 = "3.0.0"
 lazy val supportedScalaVersions = List(scala213, scala212, scala211, scala3)
 
 ThisBuild / organization := "com.wire"
@@ -64,7 +64,7 @@ ThisBuild / publishTo := {
   if (isSnapshot.value)
     Some("snapshots" at nexus + "content/repositories/snapshots")
   else
-    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+    Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
 
 scmInfo := Some(
@@ -75,7 +75,11 @@ scmInfo := Some(
 )
 
 developers := List(
-  Developer("makingthematrix", "Maciej Gorywoda", "maciej.gorywoda@wire.com", url("https://github.com/makingthematrix"))
+  Developer(
+    "makingthematrix",
+    "Maciej Gorywoda",
+    "maciej.gorywoda@wire.com",
+    url("https://github.com/makingthematrix"))
 )
 
 resolvers ++= Seq(
@@ -84,9 +88,9 @@ resolvers ++= Seq(
   Resolver.mavenLocal
 )
 
-publishConfiguration      := publishConfiguration.value.withOverwrite(true)
+publishConfiguration := publishConfiguration.value.withOverwrite(true)
 publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true)
-publishM2Configuration    := publishM2Configuration.value.withOverwrite(true)
+publishM2Configuration := publishM2Configuration.value.withOverwrite(true)
 
 Test / scalaVersion := scala213
 
@@ -96,7 +100,7 @@ lazy val root = (project in file("."))
     crossScalaVersions := supportedScalaVersions,
     libraryDependencies ++= Seq(
       "com.wire" %% "wire-signals" % "1.0.0" % Provided,
-      "org.threeten" %  "threetenbp" % "1.4.4" % Provided,
+      "org.threeten" % "threetenbp" % "1.4.4" % Provided,
       //Test dependencies
       "org.scalameta" % "munit_2.13" % "0.7.26" % "test"
     ),
@@ -104,8 +108,8 @@ lazy val root = (project in file("."))
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, 11)) => scala211Options
         case Some((2, 12)) => scala212Options
-        case Some((3, _))  => scala3Options
-        case _             => scala213Options
+        case Some((3, _)) => scala3Options
+        case _ => scala213Options
       }
     }
   )
