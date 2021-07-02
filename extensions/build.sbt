@@ -95,7 +95,7 @@ lazy val root = (project in file("."))
     name := "wire-signals-extensions",
     crossScalaVersions := supportedScalaVersions,
     libraryDependencies ++= Seq(
-      "com.wire" %% "wire-signals" % "0.5.2" % Provided,
+      "com.wire" %% "wire-signals" % "1.0.0" % Provided,
       "org.threeten" %  "threetenbp" % "1.4.4" % Provided,
       //Test dependencies
       "org.scalameta" % "munit_2.13" % "0.7.26" % "test"
