@@ -3,7 +3,7 @@
 
 ![Scala CI](https://github.com/wireapp/wire-signals/workflows/Scala%20CI/badge.svg)
 
-About two thirds of Wire Android code is written is Scala making it unique among Android apps - most of them being implemented in Java and/or Kotlin. Wire is a messenger and as such it must be very responsive: it has to quickly react to any events coming from the backend, as well as from the user, and from the Android OS itself. For the last years the Android team developed its own implementation of event streams and "signals" - special event streams with caches holding the last propagated value. They proved to be a very flexible and concise way of handling events all over the Scala code in Wire.
+About two thirds of Wire Android code is written is Scala making it unique among Android apps - most of them being implemented in Java and/or Kotlin. Wire is a messenger and as such it must be very responsive: it has to quickly react to any events coming from the backend, as well as from the user, and from the Android OS itself. The Wire Android team developed its own implementation of event streams and "signals" - special event streams with caches holding the last propagated value. They proved to be a very flexible and concise way of handling events all over the Scala code in Wire.
 
 Wire Signals are used extensively in our application, from [fetching and decoding data from another device](https://github.com/wireapp/wire-android-sync-engine/blob/develop/zmessaging/src/main/scala/com/waz/service/push/PushService.scala) to [updating the list of messages displayed in a conversation](https://github.com/wireapp/wire-android/blob/develop/app/src/main/scala/com/waz/zclient/messages/MessagesController.scala).
 
