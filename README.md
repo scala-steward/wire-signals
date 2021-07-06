@@ -56,3 +56,11 @@ If you want to know more about how we use it:
 * Another article on [how Scala futures and Wire Signals interact](https://github.com/wireapp/wire-signals/wiki/Futures-in-the-context-of-Wire-Signals)
 * ... and a slightly outdated video about how we use it at Wire Android: [Scala on Wire](https://www.youtube.com/watch?v=dnsyd-h5piI)
 
+
+
+### Contributors 
+
+* Dean Cook (https://github.com/deanrobertcook)
+* Maciej Gorywoda (https://github.com/makinthematrix)
+* Zbigniew Szymański (https://github.com/zbsz)
+
