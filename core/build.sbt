@@ -1,9 +1,9 @@
 // based on http://caryrobbins.com/dev/sbt-publishing/
 
-lazy val scala213 = "2.13.5"
+lazy val scala213 = "2.13.8"
 lazy val scala212 = "2.12.15"
 lazy val scala211 = "2.11.12"
-lazy val scala3 = "3.0.0"
+lazy val scala3 = "3.1.1"
 lazy val supportedScalaVersions = List(scala213, scala212, scala211, scala3)
 
 organization := "com.wire"
@@ -98,7 +98,6 @@ publishM2Configuration := publishM2Configuration.value.withOverwrite(true)
 lazy val root = (project in file("."))
   .settings(
     name := "wire-signals",
-    semanticdbEnabled := true,
     crossScalaVersions := supportedScalaVersions,
     libraryDependencies ++= Seq(
       //Test dependencies
@@ -115,8 +114,6 @@ lazy val root = (project in file("."))
   )
 
 testFrameworks += new TestFramework("munit.Framework")
-
-mimaPreviousArtifacts := Set("com.wire" %% "wire-signals" % "0.4.3")
 
 exportJars := true
 Compile / packageBin / packageOptions +=
